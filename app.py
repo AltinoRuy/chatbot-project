@@ -1,0 +1,26 @@
+import streamlit as st
+from services.orchestrator import process_message
+
+st.title("My AI Chatbot")
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
+
+prompt = st.chat_input("Digite sua mensagem...")
+
+if prompt:
+    st.session_state.messages.append({
+        "role": "user",
+        "content": prompt
+    })
+
+    response = process_message(prompt)
+
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": response
+    })
