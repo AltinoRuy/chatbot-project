@@ -1,5 +1,5 @@
 from core.expression_extractor import extract_expression
-from core.tools import add, subtract, multiply, divide
+from core.tools import add, divide, multiply, subtract
 
 
 def solve_addition(a: float, b: float) -> float:

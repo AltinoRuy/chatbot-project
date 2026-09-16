@@ -1,6 +1,13 @@
 from agents.math_agent import solve
-def process_message(message: str) -> str:
-    return "Recebi sua mensagem!"
+from agents.writer_agent import write_response
+from core.expression_extractor import extract_expression
+
 
 def process_message(message: str) -> str:
-    return solve(message)
+    expression = extract_expression(message)
+
+    if expression is not None:
+        result = solve(message)
+        return write_response(message, result)
+
+    return write_response(message, None)

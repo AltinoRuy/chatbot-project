@@ -1,16 +1,14 @@
-from typing import Optional, Tuple
+import re
 
 
-def extract_expression(message: str) -> Optional[Tuple[float, str, float]]:
-    parts = message.split()
+def extract_expression(message: str):
+    pattern = r"(\d+)\s*([+\-*/])\s*(\d+)"
 
-    if len(parts) != 3:
+    match = re.search(pattern, message)
+
+    if match is None:
         return None
 
-    left, operator, right = parts
+    left, operator, right = match.groups()
 
-    try:
-        return float(left), operator, float(right)
-
-    except ValueError:
-        return None
+    return float(left), operator, float(right)

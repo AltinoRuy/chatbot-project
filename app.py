@@ -10,17 +10,15 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
-prompt = st.chat_input("Digite sua mensagem...")
+prompt = st.chat_input("Type your message...")
 
 if prompt:
-    st.session_state.messages.append({
-        "role": "user",
-        "content": prompt
-    })
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    st.write("PROCESSANDO:", prompt)
 
     response = process_message(prompt)
 
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": response
-    })
+    st.session_state.messages.append({"role": "assistant", "content": response})
+
+    st.rerun()
