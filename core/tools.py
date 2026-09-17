@@ -1,4 +1,6 @@
 def add(a: float, b: float) -> float:
+
+    print("passei aqui")
     return a + b
 
 

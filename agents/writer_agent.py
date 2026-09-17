@@ -1,40 +1,28 @@
-import ollama
+from llm.provider_factory import get_provider
 
 
 def write_response(message: str, result=None) -> str:
     if result is not None:
         prompt = (
+            "You are a friendly writer agent. "
+            "Respond to the user in the same language as the user. "
+            "When a mathematical result is provided, "
+            "your only job is to communicate that result naturally. "
+            "Treat the provided mathematical result as the final answer. "
+            "Do not reinterpret the mathematical expression. "
+            "Do not assign any other meaning to the numbers. "
+            "Do not perform mathematical calculations yourself.\n\n"
             f"User message: {message}\n"
             f"Mathematical result: {result}"
         )
     else:
         prompt = (
-            f"User message: {message}\n"
-            "There is no mathematical result. "
-            "Respond naturally to the user's message."
+            "You are a friendly writer agent. "
+            "Respond to the user in the same language as the user. "
+            "Respond naturally to the user's message.\n\n"
+            f"User message: {message}"
         )
 
-    response = ollama.chat(
-        model="llama3.2:3b",
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a friendly writer agent. "
-                    "Respond to the user in the same language as the user. "
-                    "When a mathematical result is provided, "
-                    "your only job is to explain that result naturally. "
-                    "Do not reinterpret the user's mathematical expression. "
-                    "Do not invent another meaning for the numbers. "
-                    "Do not perform mathematical calculations yourself. "
-                    "If there is no mathematical result, respond naturally to the user's message."
-                ),
-            },
-            {
-                "role": "user",
-                "content": prompt,
-            },
-        ],
-    )
+    provider = get_provider()
 
-    return response.message.content
+    return provider.generate(prompt)

@@ -2,18 +2,7 @@ from core.expression_extractor import extract_expression
 from core.tools import add, divide, multiply, subtract
 
 
-def solve_addition(a: float, b: float) -> float:
-    return add(a, b)
-
-
-def solve(message: str):
-    expression = extract_expression(message)
-
-    if expression is None:
-        return "I couldn't understand the expression. Try something like: 5 + 4"
-
-    left, operator, right = expression
-
+def calculate(left: float, operator: str, right: float):
     if operator == "+":
         return add(left, right)
 
@@ -28,3 +17,18 @@ def solve(message: str):
 
     else:
         return "Unsupported operator"
+
+
+def solve_addition(a: float, b: float) -> float:
+    return add(a, b)
+
+
+def solve(message: str):
+    expression = extract_expression(message)
+
+    if expression is None:
+        return "I couldn't understand the expression. Try something like: 5 + 4"
+
+    left, operator, right = expression
+
+    return calculate(left, operator, right)
