@@ -19,8 +19,12 @@ def calculate(left: float, operator: str, right: float):
         return "Unsupported operator"
 
 
-def solve_addition(a: float, b: float) -> float:
-    return add(a, b)
+def solve_with_context(
+    last_result: float,
+    operation: str,
+    value: float,
+):
+    return calculate(last_result, operation, value)
 
 
 def solve(message: str):
@@ -32,3 +36,4 @@ def solve(message: str):
     left, operator, right = expression
 
     return calculate(left, operator, right)
+    

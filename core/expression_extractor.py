@@ -2,7 +2,7 @@ import re
 
 
 def extract_expression(message: str):
-    pattern = r"(\d+)\s*([+\-*/])\s*(\d+)"
+    pattern = r"^\s*(\d+(?:\.\d+)?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)\s*$"
 
     match = re.search(pattern, message)
 

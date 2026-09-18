@@ -1,38 +1,47 @@
-import ollama
+import re
+from typing import Optional
+
+from llm.provider_factory import get_provider
 
 
-def parse_intent(message: str) -> str:
-    response = ollama.chat(
-        model="llama3.2:3b",
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "Identify the mathematical operation and number requested by the user. "
-                    "Return exactly this format: OPERATION|NUMBER. "
-                    "Do not put | at the beginning or end. "
-                    "Do not use any other characters. "
-                    "The operation must be exactly one of: +, -, *, /. "
-                    "The number must be only the number. "
-                    "Examples: "
-                    "subtract 2 -> -|2. "
-                    "multiply 3 -> *|3. "
-                    "divide 2 -> /|2. "
-                    "add 5 -> +|5. "
-                    "If there is no mathematical operation, return none."
-                ),
-            },
-            {
-                "role": "user",
-                "content": message,
-            },
-        ],
+def parse_intent(message: str,) -> Optional[tuple[str, float]]:
+    if re.match(r"^\s*\d+(?:\.\d+)?\s*[+\-*/]\s*$", message):
+        return None
+    """Parses a user's message into a mathematical intent.
+
+    Args:
+        message: User message to analyze.
+
+    Returns:
+        A tuple containing the operation and numeric value,
+        or None if no valid mathematical intent is found.
+    """
+    prompt = (
+        "Identify whether the user is requesting a mathematical operation "
+        "using a number. "
+        "Return exactly this format: OPERATION|NUMBER. "
+        "Return none if the message is not a valid mathematical request. "
+        "Only return a mathematical operation when the requested value is a number. "
+        "Words are not numbers and must not be interpreted as numbers. "
+        "Do not calculate the result. "
+        "Do not explain anything. "
+        "The operation must be exactly one of: +, -, *, /. "
+        "The number must contain only numeric characters, with an optional decimal part. "
+        "Examples: "
+        "subtract 2 -> -|2. "
+        "multiply 3 -> *|3. "
+        "divide 2 -> /|2. "
+        "add 5 -> +|5. "
+        "banana + banana -> none. "
+        "hello -> none.\n\n"
+        f"User message: {message}"
     )
 
-    result = response.message.content.strip()
-    print("RAW INTENT:", repr(result))
+    provider = get_provider()
+    result = provider.generate(prompt).strip()
 
-    if result == "none":
+
+    if result.lower() == "none":
         return None
 
     parts = result.split("|")
