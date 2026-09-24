@@ -1,58 +1,80 @@
-from typing import Optional
-
 from llm.provider_factory import get_provider
 
 
 def write_response(
     message: str,
-    result: Optional[float] = None,
+    result: float | None = None,
     needs_context: bool = False,
 ) -> str:
-    """Generates a user-friendly response based on the calculation result.
+    """Generates a natural-language response for the user.
 
     Args:
-        message: Original user message used to determine the response language
-            and context.
-        result: Authoritative calculation result, if available.
-        needs_context: Whether the requested operation requires previous
-            calculation context.
+        message: Original user message.
+        result: Authoritative result produced by the math system.
+        needs_context: Whether the request requires a previous result.
 
     Returns:
-        A natural-language response generated for the user.
+        A natural-language response.
     """
-    if result is not None:
-        prompt = (
-            "You are a friendly writer agent. "
-            "Respond to the user in the same language as the user. "
-            "Your only responsibility is to communicate the final result. "
-            "The value below was already calculated by another system "
-            "and is authoritative. "
-            "Never perform, repeat, verify, or infer any mathematical calculation. "
-            "Never change the provided value. "
-            "Do not create an equation. "
-            "Do not use numbers from the user message as part of the answer. "
-            "Simply communicate the provided final result naturally and briefly.\n\n"
-            f"User language sample: {message}\n"
-            f"Final result: {result}"
-        )
-    elif needs_context:
-        prompt = (
-            "You are a friendly writer agent. "
-            "Respond to the user in the same language as the user. "
-            "The user requested a mathematical operation that requires "
-            "a previous result, but no previous result is available. "
-            "Explain this naturally and ask the user to perform "
-            "a calculation first.\n\n"
-            f"User message: {message}"
-        )
-    else:
-        prompt = (
-            "You are a friendly writer agent. "
-            "Respond to the user in the same language as the user. "
-            "Respond naturally to the user's message.\n\n"
-            f"User message: {message}"
-        )
-
     provider = get_provider()
 
-    return provider.generate(prompt)
+    if result is not None:
+        prompt = (
+            "You are a response writer.\n"
+            "Respond in the same language as the user.\n"
+            "Your task is only to communicate an already calculated result.\n"
+            "Do not calculate anything.\n"
+            "Do not modify the result.\n"
+            "Do not add, remove, or change numbers.\n"
+            "Return exactly one short and natural sentence.\n"
+            "The sentence MUST contain the exact placeholder {{RESULT}}.\n"
+            "Do not replace, remove, or modify the placeholder.\n\n"
+            f"User message: {message}\n"
+            "Authoritative result: {{RESULT}}"
+        )
+
+        response = provider.generate(prompt).strip()
+
+        if "{{RESULT}}" not in response:
+            return f"The result is {result}."
+
+        return response.replace("{{RESULT}}", _format_result(result))
+
+    if needs_context:
+        prompt = (
+            "You are a response writer.\n"
+            "Respond in the same language as the user.\n"
+            "The user requested a mathematical operation that requires "
+            "a previous result, but no previous result exists.\n"
+            "Explain this briefly and naturally.\n"
+            "Do not calculate anything.\n"
+            "Return exactly one short sentence.\n\n"
+            f"User message: {message}"
+        )
+
+        return provider.generate(prompt).strip()
+
+    prompt = (
+        "You are a response writer.\n"
+        "Respond in the same language as the user.\n"
+        "Respond naturally and briefly.\n"
+        "Do not perform mathematical calculations.\n\n"
+        f"User message: {message}"
+    )
+
+    return provider.generate(prompt).strip()
+
+
+def _format_result(result: float) -> str:
+    """Formats a numerical result for display.
+
+    Args:
+        result: Authoritative numerical result.
+
+    Returns:
+        A human-readable representation of the result.
+    """
+    if result.is_integer():
+        return str(int(result))
+
+    return str(result)

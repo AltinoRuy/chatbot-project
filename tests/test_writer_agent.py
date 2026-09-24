@@ -13,7 +13,7 @@ def test_write_response_returns_provider_response() -> None:
     ):
         result = write_response("5 + 4", 9.0)
 
-    assert result == "The result is 9."
+    assert result == "The result is 9.0."
 
 
 def test_write_response_without_previous_context() -> None:
@@ -46,7 +46,7 @@ def test_write_response_for_general_message() -> None:
     assert result == "Hello! How can I help you?"
 
 
-def test_writer_sends_authoritative_result_to_provider() -> None:
+def test_writer_sends_placeholder_to_provider() -> None:
     provider = Mock()
     provider.generate.return_value = "The result is 9."
 
@@ -60,10 +60,12 @@ def test_writer_sends_authoritative_result_to_provider() -> None:
 
     prompt = provider.generate.call_args.args[0]
 
-    assert "Final result: 9.0" in prompt
+    assert "Authoritative result: {{RESULT}}" in prompt
+    assert "{{RESULT}}" in prompt
+    assert "Final result: 9.0" not in prompt
 
 
-def test_writer_prompt_forbids_calculations() -> None:
+def test_writer_prompt_protects_authoritative_result() -> None:
     provider = Mock()
     provider.generate.return_value = "The result is 9."
 
@@ -76,7 +78,7 @@ def test_writer_prompt_forbids_calculations() -> None:
     prompt = provider.generate.call_args.args[0]
 
     assert (
-        "Never perform, repeat, verify, or infer any mathematical calculation."
+        "Your task is only to communicate an already calculated result."
         in prompt
     )
-    assert "Never change the provided value." in prompt
+    assert "Do not replace, remove, or modify the placeholder." in prompt

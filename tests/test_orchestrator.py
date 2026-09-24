@@ -37,10 +37,7 @@ def test_process_message_with_general_message() -> None:
     mock_solve_with_context.assert_not_called()
     mock_get_last_result.assert_not_called()
     mock_save_result.assert_not_called()
-    mock_write_response.assert_called_once_with(
-        "hello",
-        None,
-    )
+    mock_write_response.assert_called_once_with("hello")
 
 
 def test_process_message_without_previous_context() -> None:
@@ -111,13 +108,20 @@ def test_process_message_with_previous_context() -> None:
 
     assert result == "The result is 4.5."
     mock_get_last_result.assert_called_once()
-    mock_solve_with_context.assert_called_once_with(9.0, "/", 2.0)
+    mock_solve_with_context.assert_called_once_with(
+        9.0,
+        "/",
+        2.0,
+    )
     mock_save_result.assert_called_once_with(4.5)
-    mock_write_response.assert_called_once_with("divide 2", 4.5)
+    mock_write_response.assert_called_once_with(
+        "divide 2",
+        4.5,
+    )
 
 
 def test_process_message_with_complete_expression() -> None:
-    expression = (5.0, "+", 4.0)
+    expression = "5+4"
 
     with (
         patch(
@@ -144,5 +148,8 @@ def test_process_message_with_complete_expression() -> None:
     assert result == "The result is 9."
     mock_solve.assert_called_once_with("5 + 4")
     mock_save_result.assert_called_once_with(9.0)
-    mock_write_response.assert_called_once_with("5 + 4", 9.0)
+    mock_write_response.assert_called_once_with(
+        "5 + 4",
+        9.0,
+    )
     mock_parse_intent.assert_not_called()
