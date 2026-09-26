@@ -88,9 +88,7 @@ def tokenize(expression: str) -> list[str]:
             tokens.append(expression[start:i])
             continue
 
-        if character == "-" and (
-            not tokens or tokens[-1] in {"+", "-", "*", "/"}
-        ):
+        if character == "-" and (not tokens or tokens[-1] in {"+", "-", "*", "/"}):
             i += 1
             start = i
 

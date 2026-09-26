@@ -31,9 +31,7 @@ def test_write_response_falls_back_when_placeholder_is_missing() -> None:
 
 def test_write_response_falls_back_when_response_contains_extra_numbers() -> None:
     provider = Mock()
-    provider.generate.return_value = (
-        "You can't divide 2 by itself. {{RESULT}}"
-    )
+    provider.generate.return_value = "You can't divide 2 by itself. {{RESULT}}"
 
     with patch(
         "agents.writer_agent.get_provider",
@@ -86,7 +84,6 @@ def test_writer_prompt_protects_authoritative_result() -> None:
     assert "The authoritative result is provided by the application." in prompt
     assert "Do not calculate anything." in prompt
     assert (
-        "Do not interpret, reinterpret, or modify the mathematical operation."
-        in prompt
+        "Do not interpret, reinterpret, or modify the mathematical operation." in prompt
     )
     assert "The sentence MUST contain the exact placeholder {{RESULT}}." in prompt
