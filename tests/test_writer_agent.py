@@ -5,6 +5,19 @@ from agents.writer_agent import write_response
 
 def test_write_response_returns_provider_response() -> None:
     provider = Mock()
+    provider.generate.return_value = "The result is {{RESULT}}."
+
+    with patch(
+        "agents.writer_agent.get_provider",
+        return_value=provider,
+    ):
+        result = write_response("5 + 4", 9.0)
+
+    assert result == "The result is 9."
+
+
+def test_write_response_falls_back_when_placeholder_is_missing() -> None:
+    provider = Mock()
     provider.generate.return_value = "The result is 9."
 
     with patch(
@@ -13,27 +26,38 @@ def test_write_response_returns_provider_response() -> None:
     ):
         result = write_response("5 + 4", 9.0)
 
-    assert result == "The result is 9.0."
+    assert result == "The result is 9."
 
 
-def test_write_response_without_previous_context() -> None:
+def test_write_response_falls_back_when_response_contains_extra_numbers() -> None:
     provider = Mock()
-    provider.generate.return_value = "Please perform a calculation first."
+    provider.generate.return_value = (
+        "You can't divide 2 by itself. {{RESULT}}"
+    )
 
     with patch(
         "agents.writer_agent.get_provider",
         return_value=provider,
     ):
-        result = write_response(
-            "divide 2",
-            None,
-            True,
-        )
+        result = write_response("divide 2", 4.5)
 
-    assert result == "Please perform a calculation first."
+    assert result == "The result is 4.5."
 
 
-def test_write_response_for_general_message() -> None:
+def test_write_response_handles_context_requirement() -> None:
+    provider = Mock()
+    provider.generate.return_value = "There is no previous result."
+
+    with patch(
+        "agents.writer_agent.get_provider",
+        return_value=provider,
+    ):
+        result = write_response("divide 2", None, True)
+
+    assert result == "There is no previous result."
+
+
+def test_write_response_handles_non_math_message() -> None:
     provider = Mock()
     provider.generate.return_value = "Hello! How can I help you?"
 
@@ -41,33 +65,14 @@ def test_write_response_for_general_message() -> None:
         "agents.writer_agent.get_provider",
         return_value=provider,
     ):
-        result = write_response("hello")
+        result = write_response("Hello", None, False)
 
     assert result == "Hello! How can I help you?"
 
 
-def test_writer_sends_placeholder_to_provider() -> None:
-    provider = Mock()
-    provider.generate.return_value = "The result is 9."
-
-    with patch(
-        "agents.writer_agent.get_provider",
-        return_value=provider,
-    ):
-        write_response("5 + 4", 9.0)
-
-    provider.generate.assert_called_once()
-
-    prompt = provider.generate.call_args.args[0]
-
-    assert "Authoritative result: {{RESULT}}" in prompt
-    assert "{{RESULT}}" in prompt
-    assert "Final result: 9.0" not in prompt
-
-
 def test_writer_prompt_protects_authoritative_result() -> None:
     provider = Mock()
-    provider.generate.return_value = "The result is 9."
+    provider.generate.return_value = "The result is {{RESULT}}."
 
     with patch(
         "agents.writer_agent.get_provider",
@@ -77,8 +82,11 @@ def test_writer_prompt_protects_authoritative_result() -> None:
 
     prompt = provider.generate.call_args.args[0]
 
+    assert "The mathematical operation has already been calculated." in prompt
+    assert "The authoritative result is provided by the application." in prompt
+    assert "Do not calculate anything." in prompt
     assert (
-        "Your task is only to communicate an already calculated result."
+        "Do not interpret, reinterpret, or modify the mathematical operation."
         in prompt
     )
-    assert "Do not replace, remove, or modify the placeholder." in prompt
+    assert "The sentence MUST contain the exact placeholder {{RESULT}}." in prompt

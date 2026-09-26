@@ -1,3 +1,5 @@
+import re
+
 from llm.provider_factory import get_provider
 
 
@@ -22,10 +24,13 @@ def write_response(
         prompt = (
             "You are a response writer.\n"
             "Respond in the same language as the user.\n"
-            "Your task is only to communicate an already calculated result.\n"
+            "The mathematical operation has already been calculated.\n"
+            "The authoritative result is provided by the application.\n"
+            "Your task is ONLY to communicate that result naturally.\n"
             "Do not calculate anything.\n"
-            "Do not modify the result.\n"
-            "Do not add, remove, or change numbers.\n"
+            "Do not interpret, reinterpret, or modify the mathematical "
+            "operation.\n"
+            "Do not add any numbers from your own reasoning.\n"
             "Return exactly one short and natural sentence.\n"
             "The sentence MUST contain the exact placeholder {{RESULT}}.\n"
             "Do not replace, remove, or modify the placeholder.\n\n"
@@ -35,8 +40,8 @@ def write_response(
 
         response = provider.generate(prompt).strip()
 
-        if "{{RESULT}}" not in response:
-            return f"The result is {result}."
+        if not _is_valid_result_response(response):
+            return f"The result is {_format_result(result)}."
 
         return response.replace("{{RESULT}}", _format_result(result))
 
@@ -63,6 +68,26 @@ def write_response(
     )
 
     return provider.generate(prompt).strip()
+
+
+def _is_valid_result_response(response: str) -> bool:
+    """Validates a Writer response containing an authoritative result.
+
+    The response must contain exactly one result placeholder and must not
+    contain any other numerical values.
+
+    Args:
+        response: Generated response from the language model.
+
+    Returns:
+        True if the response follows the result guardrails, otherwise False.
+    """
+    if response.count("{{RESULT}}") != 1:
+        return False
+
+    response_without_placeholder = response.replace("{{RESULT}}", "")
+
+    return not re.search(r"\d", response_without_placeholder)
 
 
 def _format_result(result: float) -> str:
