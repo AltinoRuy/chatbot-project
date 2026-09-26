@@ -8,4 +8,4 @@ def get_provider() -> BaseProvider:
     Returns:
         An instance of the configured language model provider.
     """
-    return OllamaProvider()
+    return OllamaProvider(model="llama3.2:3b")

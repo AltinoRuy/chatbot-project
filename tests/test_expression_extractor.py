@@ -1,6 +1,8 @@
 from core.expression_extractor import (
     extract_expression,
     is_context_operation,
+    is_invalid_mathematical_expression,
+    is_mathematical_input,
     normalize_expression,
 )
 
@@ -33,3 +35,27 @@ def test_context_operation() -> None:
     assert is_context_operation("+5") is True
     assert is_context_operation("menos 5") is True
     assert is_context_operation("5+5") is False
+
+
+def test_invalid_mathematical_expression() -> None:
+    assert is_invalid_mathematical_expression("5+") is True
+
+
+def test_valid_expression_is_not_invalid() -> None:
+    assert is_invalid_mathematical_expression("5+4") is False
+
+
+def test_context_operation_is_not_invalid() -> None:
+    assert is_invalid_mathematical_expression("+5") is False
+
+
+def test_non_mathematical_input_is_not_invalid() -> None:
+    assert is_invalid_mathematical_expression("hello") is False
+
+
+def test_mathematical_input() -> None:
+    assert is_mathematical_input("5+4") is True
+
+
+def test_non_mathematical_input() -> None:
+    assert is_mathematical_input("hello") is False

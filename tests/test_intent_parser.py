@@ -105,3 +105,46 @@ def test_returns_none_for_non_numeric_value() -> None:
         result = parse_intent("add banana")
 
     assert result is None
+
+
+def test_parse_shorthand_intent() -> None:
+    result = parse_intent("+5")
+
+    assert result == ("+", 5.0)
+
+
+def test_parse_number_word() -> None:
+    result = parse_intent("mais cinco")
+
+    assert result == ("+", 5.0)
+
+
+def test_parse_subtraction_with_number_word() -> None:
+    result = parse_intent("menos cinco")
+
+    assert result == ("-", 5.0)
+
+
+def test_parse_multiplication_intent() -> None:
+    result = parse_intent("vezes 2")
+
+    assert result == ("*", 2.0)
+
+
+def test_parse_division_with_number_word() -> None:
+    result = parse_intent("dividido por dois")
+
+    assert result == ("/", 2.0)
+
+
+def test_provider_negative_value_is_normalized() -> None:
+    provider = Mock()
+    provider.generate.return_value = "-|-5"
+
+    with patch(
+        "core.intent_parser.get_provider",
+        return_value=provider,
+    ):
+        result = parse_intent("some mathematical request")
+
+    assert result == ("-", 5.0)
