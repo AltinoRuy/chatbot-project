@@ -1,12 +1,5 @@
-from agents.math_agent import solve, solve_with_context
+from agents.math_agent import process_math_message
 from agents.writer_agent import write_response
-from core.context_detector import requires_context
-from core.expression_extractor import (
-    extract_expression,
-    is_invalid_mathematical_expression,
-)
-from core.intent_parser import parse_intent
-from services.memory import get_last_result, save_result
 
 
 def process_message(message: str) -> str:
@@ -18,40 +11,15 @@ def process_message(message: str) -> str:
     Returns:
         A natural-language response.
     """
-    expression = extract_expression(message)
+    try:
+        math_result = process_math_message(message)
+    except ValueError as error:
+        return str(error)
 
-    if expression is not None:
-        try:
-            result = solve(message)
-            save_result(result)
-            return write_response(message, result)
-        except ValueError as error:
-            return str(error)
-
-    if is_invalid_mathematical_expression(message):
-        return "Invalid mathematical expression."
-
-    intent = parse_intent(message)
-
-    needs_context = requires_context(expression, intent)
-
-    if needs_context:
-        last_result = get_last_result()
-
-        if last_result is None:
-            return write_response(message, None, True)
-
-        try:
-            operation, value = intent
-            result = solve_with_context(last_result, operation, value)
-            save_result(result)
-
-            return write_response(message, result)
-
-        except ValueError as error:
-            return str(error)
-
-    if intent is None:
+    if not math_result.handled:
         return write_response(message)
 
-    return write_response(message)
+    if math_result.needs_context:
+        return write_response(message, None, True)
+
+    return write_response(message, math_result.result)

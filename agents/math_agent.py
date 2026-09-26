@@ -1,5 +1,23 @@
-from core.expression_extractor import normalize_expression
+from dataclasses import dataclass
+
+from core.context_detector import requires_context
+from core.expression_extractor import (
+    extract_expression,
+    is_invalid_mathematical_expression,
+    normalize_expression,
+)
+from core.intent_parser import parse_intent
 from core.tools import add, divide, multiply, subtract
+from services.memory import get_last_result, save_result
+
+
+@dataclass
+class MathResult:
+    """Structured result returned by the Math Agent."""
+
+    handled: bool
+    result: float | None = None
+    needs_context: bool = False
 
 
 def calculate(
@@ -70,7 +88,9 @@ def tokenize(expression: str) -> list[str]:
             tokens.append(expression[start:i])
             continue
 
-        if character == "-" and (not tokens or tokens[-1] in {"+", "-", "*", "/"}):
+        if character == "-" and (
+            not tokens or tokens[-1] in {"+", "-", "*", "/"}
+        ):
             i += 1
             start = i
 
@@ -143,7 +163,6 @@ def evaluate_tokens(tokens: list[str]) -> float:
         right = float(values[i + 1])
 
         result = calculate(result, operator, right)
-
         i += 2
 
     return result
@@ -186,3 +205,56 @@ def solve_with_context(
         The result of the mathematical operation.
     """
     return calculate(last_result, operation, value)
+
+
+def process_math_message(message: str) -> MathResult:
+    """Processes a user message as a mathematical task.
+
+    This is the public entry point of the Math Agent. It decides whether the
+    message is a complete expression, a contextual operation, or not a
+    mathematical request.
+
+    Args:
+        message: User message.
+
+    Returns:
+        A structured MathResult describing the outcome.
+
+    Raises:
+        ValueError: If the mathematical expression is invalid.
+    """
+    expression = extract_expression(message)
+
+    if expression is not None:
+        result = solve(message)
+        save_result(result)
+        return MathResult(
+            handled=True,
+            result=result,
+        )
+
+    if is_invalid_mathematical_expression(message):
+        raise ValueError("Invalid mathematical expression.")
+
+    intent = parse_intent(message)
+
+    if not requires_context(expression, intent):
+        return MathResult(handled=False)
+
+    last_result = get_last_result()
+
+    if last_result is None:
+        return MathResult(
+            handled=True,
+            result=None,
+            needs_context=True,
+        )
+
+    operation, value = intent
+    result = solve_with_context(last_result, operation, value)
+    save_result(result)
+
+    return MathResult(
+        handled=True,
+        result=result,
+    )

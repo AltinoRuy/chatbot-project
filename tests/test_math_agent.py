@@ -1,6 +1,14 @@
+from unittest.mock import patch
+
 import pytest
 
-from agents.math_agent import calculate, solve, solve_with_context
+from agents.math_agent import (
+    MathResult,
+    calculate,
+    process_math_message,
+    solve,
+    solve_with_context,
+)
 
 
 def test_calculate_addition() -> None:
@@ -35,3 +43,154 @@ def test_solve_invalid_expression_raises_value_error() -> None:
 
 def test_calculate_subtraction() -> None:
     assert calculate(10, "-", 3) == 7
+
+
+def test_process_math_message_with_complete_expression() -> None:
+    with (
+        patch(
+            "agents.math_agent.extract_expression",
+            return_value="5+4",
+        ),
+        patch(
+            "agents.math_agent.solve",
+            return_value=9.0,
+        ) as mock_solve,
+        patch(
+            "agents.math_agent.save_result",
+        ) as mock_save_result,
+    ):
+        result = process_math_message("5 + 4")
+
+    assert result == MathResult(
+        handled=True,
+        result=9.0,
+        needs_context=False,
+    )
+    mock_solve.assert_called_once_with("5 + 4")
+    mock_save_result.assert_called_once_with(9.0)
+
+
+def test_process_math_message_with_previous_context() -> None:
+    intent = ("/", 2.0)
+
+    with (
+        patch(
+            "agents.math_agent.extract_expression",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.is_invalid_mathematical_expression",
+            return_value=False,
+        ),
+        patch(
+            "agents.math_agent.parse_intent",
+            return_value=intent,
+        ),
+        patch(
+            "agents.math_agent.get_last_result",
+            return_value=9.0,
+        ) as mock_get_last_result,
+        patch(
+            "agents.math_agent.solve_with_context",
+            return_value=4.5,
+        ) as mock_solve_with_context,
+        patch(
+            "agents.math_agent.save_result",
+        ) as mock_save_result,
+    ):
+        result = process_math_message("divide 2")
+
+    assert result == MathResult(
+        handled=True,
+        result=4.5,
+        needs_context=False,
+    )
+    mock_get_last_result.assert_called_once()
+    mock_solve_with_context.assert_called_once_with(
+        9.0,
+        "/",
+        2.0,
+    )
+    mock_save_result.assert_called_once_with(4.5)
+
+
+def test_process_math_message_without_previous_context() -> None:
+    intent = ("/", 2.0)
+
+    with (
+        patch(
+            "agents.math_agent.extract_expression",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.is_invalid_mathematical_expression",
+            return_value=False,
+        ),
+        patch(
+            "agents.math_agent.parse_intent",
+            return_value=intent,
+        ),
+        patch(
+            "agents.math_agent.get_last_result",
+            return_value=None,
+        ) as mock_get_last_result,
+        patch(
+            "agents.math_agent.solve_with_context",
+        ) as mock_solve_with_context,
+        patch(
+            "agents.math_agent.save_result",
+        ) as mock_save_result,
+    ):
+        result = process_math_message("divide 2")
+
+    assert result == MathResult(
+        handled=True,
+        result=None,
+        needs_context=True,
+    )
+    mock_get_last_result.assert_called_once()
+    mock_solve_with_context.assert_not_called()
+    mock_save_result.assert_not_called()
+
+
+def test_process_math_message_with_general_message() -> None:
+    with (
+        patch(
+            "agents.math_agent.extract_expression",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.is_invalid_mathematical_expression",
+            return_value=False,
+        ),
+        patch(
+            "agents.math_agent.parse_intent",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.get_last_result",
+        ) as mock_get_last_result,
+        patch(
+            "agents.math_agent.save_result",
+        ) as mock_save_result,
+    ):
+        result = process_math_message("hello")
+
+    assert result == MathResult(handled=False)
+    mock_get_last_result.assert_not_called()
+    mock_save_result.assert_not_called()
+
+
+def test_process_math_message_with_invalid_expression() -> None:
+    with (
+        patch(
+            "agents.math_agent.extract_expression",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.is_invalid_mathematical_expression",
+            return_value=True,
+        ),
+    ):
+        with pytest.raises(ValueError, match="Invalid mathematical expression."):
+            process_math_message("5++")
