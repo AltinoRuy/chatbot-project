@@ -8,7 +8,7 @@ from core.expression_extractor import (
 )
 from core.intent_parser import parse_intent
 from core.tools import add, divide, multiply, subtract
-from services.memory import get_last_result, save_result
+from services.memory import Memory
 
 
 @dataclass
@@ -207,7 +207,10 @@ def solve_with_context(
     return calculate(last_result, operation, value)
 
 
-def process_math_message(message: str) -> MathResult:
+def process_math_message(
+    message: str,
+    memory: Memory,
+) -> MathResult:
     """Processes a user message as a mathematical task.
 
     This is the public entry point of the Math Agent. It decides whether the
@@ -216,6 +219,7 @@ def process_math_message(message: str) -> MathResult:
 
     Args:
         message: User message.
+        memory: Memory instance used to store and retrieve mathematical results.
 
     Returns:
         A structured MathResult describing the outcome.
@@ -227,7 +231,8 @@ def process_math_message(message: str) -> MathResult:
 
     if expression is not None:
         result = solve(message)
-        save_result(result)
+        memory.save_result(result)
+
         return MathResult(
             handled=True,
             result=result,
@@ -241,7 +246,7 @@ def process_math_message(message: str) -> MathResult:
     if not requires_context(expression, intent):
         return MathResult(handled=False)
 
-    last_result = get_last_result()
+    last_result = memory.get_last_result()
 
     if last_result is None:
         return MathResult(
@@ -252,7 +257,7 @@ def process_math_message(message: str) -> MathResult:
 
     operation, value = intent
     result = solve_with_context(last_result, operation, value)
-    save_result(result)
+    memory.save_result(result)
 
     return MathResult(
         handled=True,
