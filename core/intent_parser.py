@@ -68,19 +68,37 @@ def parse_intent(message: str) -> tuple[str, float] | None:
 
     patterns = [
         (
-            r"^(?:mais|adicione|adicionar|some|somar)\s*(.+)$",
+            r"^(?:mais|adicione|adicionar|some|somar|add|plus)\s*(.+)$",
             "+",
         ),
         (
-            r"^(?:menos|subtraia|subtrair|tire|tirar)\s*(.+)$",
+            r"^(?:menos|subtraia|subtrair|tire|tirar|subtract|minus)\s*(.+)$",
             "-",
         ),
         (
-            r"^(?:vezes|multiplica(?:r)?\s*por|multiplique\s*por)\s*(.+)$",
+            r"^(?:vezes|multiplica(?:r)?\s*por|multiplique\s*por"
+            r"|multiply(?:\s+by)?|times)\s*(.+)$",
             "*",
         ),
         (
-            r"^(?:dividido\s*por|divide(?:\s*por)?|divida(?:\s*por)?)" r"\s*(.+)$",
+            r"^(?:dividido\s*por|divide(?:\s*por)?|divida(?:\s*por)?"
+            r"|divide(?:\s+by)?|divided\s+by)\s*(.+)$",
+            "/",
+        ),
+        (
+            r"^(?:suma|sumar)\s*(.+)$",
+            "+",
+        ),
+        (
+            r"^(?:resta|restar)\s*(.+)$",
+            "-",
+        ),
+        (
+            r"^(?:multiplica(?:\s+por)?|multiplicar\s+por)\s*(.+)$",
+            "*",
+        ),
+        (
+            r"^(?:divide(?:\s+por)?|dividir\s+por)\s*(.+)$",
             "/",
         ),
     ]
