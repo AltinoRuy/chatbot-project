@@ -1,7 +1,5 @@
 import re
 
-from llm.provider_factory import get_provider
-
 NUMBER_WORDS = {
     "zero": 0,
     "um": 1,
@@ -41,11 +39,11 @@ def _parse_number(value: str) -> float | None:
 
 
 def parse_intent(message: str) -> tuple[str, float] | None:
-    """Parses a contextual mathematical intent from the user message.
+    """Parses a contextual mathematical intent.
 
-    Deterministic patterns are evaluated before using the language model.
-    This prevents the language model from interpreting mathematical
-    operations that can be handled reliably by application logic.
+    Mathematical intent is detected using deterministic patterns only.
+    Unrecognized messages return None instead of being interpreted by a
+    language model.
 
     Args:
         message: User message.
@@ -69,9 +67,18 @@ def parse_intent(message: str) -> tuple[str, float] | None:
         return operator, float(value)
 
     patterns = [
-        (r"^mais\s*(.+)$", "+"),
-        (r"^menos\s*(.+)$", "-"),
-        (r"^(?:vezes|multiplica(?:r)?\s*por)\s*(.+)$", "*"),
+        (
+            r"^(?:mais|adicione|adicionar|some|somar)\s*(.+)$",
+            "+",
+        ),
+        (
+            r"^(?:menos|subtraia|subtrair|tire|tirar)\s*(.+)$",
+            "-",
+        ),
+        (
+            r"^(?:vezes|multiplica(?:r)?\s*por|multiplique\s*por)\s*(.+)$",
+            "*",
+        ),
         (
             r"^(?:dividido\s*por|divide(?:\s*por)?|divida(?:\s*por)?)" r"\s*(.+)$",
             "/",
@@ -87,39 +94,4 @@ def parse_intent(message: str) -> tuple[str, float] | None:
             if number is not None:
                 return operator, number
 
-    prompt = (
-        "Identify the user's mathematical intent.\n\n"
-        "Return exactly one of these formats:\n"
-        "+|5\n"
-        "-|3\n"
-        "*|2\n"
-        "/|10\n\n"
-        "Rules:\n"
-        "- The number must always be positive.\n"
-        "- Do not calculate.\n"
-        '- If it is not a mathematical request, return "none".\n\n'
-        f"User message: {message}"
-    )
-
-    provider = get_provider()
-    response = provider.generate(prompt).strip()
-
-    if response.lower() == "none":
-        return None
-
-    parts = response.split("|")
-
-    if len(parts) != 2:
-        return None
-
-    operator, value = parts
-
-    if operator not in {"+", "-", "*", "/"}:
-        return None
-
-    try:
-        numeric_value = abs(float(value))
-    except ValueError:
-        return None
-
-    return operator, numeric_value
+    return None

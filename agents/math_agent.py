@@ -4,7 +4,6 @@ from core.context_detector import requires_context
 from core.expression_extractor import (
     extract_expression,
     is_invalid_mathematical_expression,
-    normalize_expression,
 )
 from core.intent_parser import parse_intent
 from core.tools import add, divide, multiply, subtract
@@ -166,19 +165,18 @@ def evaluate_tokens(tokens: list[str]) -> float:
     return result
 
 
-def solve(message: str) -> float:
-    """Solves a complete mathematical expression.
+def solve(expression: str) -> float:
+    """Solves a normalized mathematical expression.
 
     Args:
-        message: User message containing a mathematical expression.
+        expression: Normalized mathematical expression.
 
     Returns:
-        The result of the mathematical expression.
+        The calculated result.
 
     Raises:
-        ValueError: If the message does not contain a valid expression.
+        ValueError: If the expression is invalid.
     """
-    expression = normalize_expression(message)
     tokens = tokenize(expression)
 
     if len(tokens) < 3:
@@ -228,7 +226,7 @@ def process_math_message(
     expression = extract_expression(message)
 
     if expression is not None:
-        result = solve(message)
+        result = solve(expression)
         memory.save_result(result)
 
         return MathResult(

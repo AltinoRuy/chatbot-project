@@ -67,13 +67,12 @@ def test_process_math_message_with_complete_expression() -> None:
         needs_context=False,
     )
     assert memory.get_last_result() == 9.0
-    mock_solve.assert_called_once_with("5 + 4")
+    mock_solve.assert_called_once_with("5+4")
 
 
 def test_process_math_message_with_previous_context() -> None:
     memory = Memory()
     memory.save_result(9.0)
-
     intent = ("/", 2.0)
 
     with (
@@ -111,7 +110,6 @@ def test_process_math_message_with_previous_context() -> None:
 
 def test_process_math_message_without_previous_context() -> None:
     memory = Memory()
-
     intent = ("/", 2.0)
 
     with (
@@ -174,5 +172,8 @@ def test_process_math_message_with_invalid_expression() -> None:
             return_value=True,
         ),
     ):
-        with pytest.raises(ValueError, match="Invalid mathematical expression."):
+        with pytest.raises(
+            ValueError,
+            match="Invalid mathematical expression.",
+        ):
             process_math_message("5++", memory)

@@ -53,21 +53,39 @@ def write_response(
             "a previous result, but no previous result exists.\n"
             "Explain this briefly and naturally.\n"
             "Do not calculate anything.\n"
+            "Do not introduce or derive any numerical values.\n"
             "Return exactly one short sentence.\n\n"
             f"User message: {message}"
         )
 
-        return provider.generate(prompt).strip()
+        response = provider.generate(prompt).strip()
+
+        if _contains_numbers(response):
+            return "There is no previous mathematical result to use."
+
+        return response
 
     prompt = (
         "You are a response writer.\n"
         "Respond in the same language as the user.\n"
         "Respond naturally and briefly.\n"
-        "Do not perform mathematical calculations.\n\n"
+        "Do not perform mathematical calculations.\n"
+        "Do not add, subtract, multiply, divide, count, or compare "
+        "numerical values.\n"
+        "Do not derive a numerical result from numbers mentioned by the "
+        "user.\n"
+        "Do not introduce any new numerical values in your response.\n"
+        "If the user mentions numbers, treat them only as information "
+        "provided by the user and do not calculate with them.\n\n"
         f"User message: {message}"
     )
 
-    return provider.generate(prompt).strip()
+    response = provider.generate(prompt).strip()
+
+    if _contains_new_numbers(message, response):
+        return "I can help with that, but I will not perform calculations."
+
+    return response
 
 
 def _is_valid_result_response(response: str) -> bool:
@@ -88,6 +106,35 @@ def _is_valid_result_response(response: str) -> bool:
     response_without_placeholder = response.replace("{{RESULT}}", "")
 
     return not re.search(r"\d", response_without_placeholder)
+
+
+def _contains_numbers(response: str) -> bool:
+    """Checks whether a response contains numerical digits.
+
+    Args:
+        response: Generated response.
+
+    Returns:
+        True if the response contains at least one numerical digit.
+    """
+    return bool(re.search(r"\d", response))
+
+
+def _contains_new_numbers(message: str, response: str) -> bool:
+    """Checks whether a response introduces numerical values not in the input.
+
+    Args:
+        message: Original user message.
+        response: Generated response.
+
+    Returns:
+        True if the response contains a numerical value that was not present
+        in the user's original message.
+    """
+    input_numbers = re.findall(r"\d+(?:[.,]\d+)?", message)
+    response_numbers = re.findall(r"\d+(?:[.,]\d+)?", response)
+
+    return any(number not in input_numbers for number in response_numbers)
 
 
 def _format_result(result: float) -> str:
