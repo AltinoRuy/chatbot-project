@@ -1,2 +1,14 @@
 [tool.isort]
 profile = "black"
+
+[tool.coverage.run]
+source = [
+    "agents",
+    "core",
+    "llm",
+    "services",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
