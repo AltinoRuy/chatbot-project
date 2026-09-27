@@ -1,6 +1,6 @@
 # AI Chatbot
 
-A local AI chatbot built with Python, Streamlit, and Ollama. The project demonstrates agent orchestration, tool usage, context management, memory, prompt engineering, and guardrails without relying on agent frameworks such as LangChain or CrewAI.
+A local AI chatbot built with Python, Streamlit, and Ollama. The project demonstrates agent orchestration, tool usage, context management, memory, prompt engineering, guardrails, and LLM provider abstraction without relying on agent frameworks such as LangChain or CrewAI.
 
 ## Overview
 
@@ -24,35 +24,32 @@ Bot: The result is 4.5.
 
 In the second interaction, the Math Agent retrieves `9` from memory and applies the division operation through the mathematical tool.
 
----
-
 ## Features
 
-* Streamlit chat interface
-* Session-based conversation history
-* Mathematical operations:
-
-  * Addition
-  * Subtraction
-  * Multiplication
-  * Division
-* Mathematical tool execution
-* Context-aware mathematical operations
-* Session memory for previous mathematical results
-* Dedicated Math Agent
-* Dedicated Writer Agent
-* Central Orchestrator
-* LLM provider abstraction
-* Ollama integration
-* Writer guardrails
-* Unit tests with pytest
-* Black code formatting
-* Flake8 linting
-* Isort import sorting
-* Typed Python code
-* No LangChain, CrewAI, or FastAPI
-
----
+- Streamlit chat interface
+- Session-based conversation history
+- Mathematical operations:
+  - Addition
+  - Subtraction
+  - Multiplication
+  - Division
+- Mathematical tool execution
+- Context-aware mathematical operations
+- Session memory for previous mathematical results
+- Dedicated Math Agent
+- Dedicated Writer Agent
+- Central Orchestrator
+- LLM provider abstraction
+- Ollama integration
+- Writer guardrails
+- Multilingual mathematical parsing
+- Unit tests with pytest
+- Black code formatting
+- Flake8 linting
+- Isort import sorting
+- Test coverage enforcement
+- Typed Python code
+- No LangChain, CrewAI, or FastAPI
 
 ## Architecture
 
@@ -77,26 +74,25 @@ The application follows a simple layered architecture that separates responsibil
               |   Math Agent   |       |  Writer Agent  |
               |                |       |                |
               | Parse context  |       | Natural        |
-              | Call tools     |       | language       |
-              | Store result   |       | response       |
+              | Parse math     |       | language       |
+              | Call tools     |       | response       |
+              | Store result   |       | guardrails     |
               +-------+--------+       +-------+--------+
                       |                        |
                       v                        v
               +----------------+       +----------------+
               | Mathematical   |       |  LLM Provider  |
               |     Tools      |       |  Abstraction   |
-              +----------------+       +-------+--------+
-                                               |
-                                               v
-                                        +--------------+
-                                        |    Ollama    |
-                                        | llama3.2:3b  |
-                                        +--------------+
-
-              +----------------------+
-              |       Memory         |
-              | Latest math result   |
-              +----------------------+
+              +-------+--------+       +-------+--------+
+                      |                        |
+                      v                        v
+                   Result                  Provider
+                      |                        |
+                      v                        v
+              +----------------+       +----------------+
+              |     Memory     |       |     Ollama     |
+              | Latest result  |       |  llama3.2:3b   |
+              +----------------+       +----------------+
 ```
 
 ### Responsibility flow
@@ -113,7 +109,10 @@ Orchestrator
      v
 Math Agent
      |
-     +-- Complete expression ------> Math Tools
+     +-- Complete expression ------> Expression Extractor
+     |                                  |
+     |                                  v
+     |                              Math Tools
      |                                  |
      |                                  v
      |                               Result
@@ -121,7 +120,10 @@ Math Agent
      |                                  v
      |                               Memory
      |
-     +-- Contextual operation ------> Memory
+     +-- Contextual operation ------> Intent Parser
+                                        |
+                                        v
+                                     Memory
                                         |
                                         v
                                    Math Tools
@@ -139,7 +141,7 @@ Natural-language response
 Streamlit
 ```
 
----
+The Orchestrator coordinates the workflow but does not interpret mathematical operations or execute mathematical tools directly.
 
 ## Agents
 
@@ -149,11 +151,11 @@ The Orchestrator is responsible for coordinating the application workflow.
 
 It does not:
 
-* Parse mathematical expressions
-* Perform mathematical calculations
-* Access mathematical tools directly
-* Interpret mathematical context
-* Modify mathematical results
+- Parse mathematical expressions
+- Perform mathematical calculations
+- Access mathematical tools directly
+- Interpret mathematical context
+- Modify mathematical results
 
 Its responsibility is to pass the user message through the appropriate workflow and coordinate the Math Agent and Writer Agent.
 
@@ -163,39 +165,17 @@ The Math Agent owns the mathematical workflow.
 
 Its responsibilities include:
 
-* Detecting mathematical expressions
-* Normalizing mathematical expressions
-* Tokenizing expressions
-* Handling operator precedence
-* Parsing contextual mathematical operations
-* Retrieving previous results from memory
-* Calling mathematical tools
-* Storing new results in memory
-* Returning a structured mathematical result
+- Detecting mathematical expressions
+- Normalizing mathematical expressions
+- Tokenizing expressions
+- Evaluating expressions with operator precedence
+- Parsing contextual mathematical operations
+- Retrieving previous results from memory
+- Calling mathematical tools
+- Storing new results in memory
+- Returning a structured mathematical result
 
 The Math Agent is the only component responsible for mathematical interpretation and execution.
-
-#### Source of truth
-
-Mathematical results come exclusively from application tools.
-
-The language model does not calculate the result.
-
-For example:
-
-```text
-User: 5 + 4
-
-Math Agent
-    |
-    +-- Parse expression
-    |
-    +-- Call add(5, 4)
-    |
-    +-- Result = 9
-```
-
-The value `9` is then passed to the Writer Agent as an authoritative result.
 
 ### Writer Agent
 
@@ -203,18 +183,16 @@ The Writer Agent is responsible only for communicating results naturally to the 
 
 When a mathematical result is available, the Writer Agent:
 
-* Receives the authoritative result
-* Generates a short natural-language response
-* Uses the user's language
-* Does not perform mathematical calculations
-* Does not reinterpret the mathematical operation
-* Does not modify the result
+- Receives the authoritative result
+- Generates a short natural-language response
+- Uses the user's language
+- Does not perform mathematical calculations
+- Does not reinterpret the mathematical operation
+- Does not modify the result
 
 The application validates the generated response before replacing the result placeholder with the authoritative value.
 
 If the generated response violates the guardrails, the application falls back to a deterministic response.
-
----
 
 ## Mathematical Tools
 
@@ -273,7 +251,56 @@ divide(9, 2)
 
 Division by zero and unsupported operations are handled by the mathematical tool layer.
 
----
+## Mathematical Parsing
+
+The application uses deterministic parsing components instead of delegating mathematical interpretation to the language model.
+
+### Expression Extractor
+
+`core/expression_extractor.py` is responsible for:
+
+- Normalizing mathematical vocabulary
+- Converting supported number words into numeric values
+- Converting mathematical words into operators
+- Extracting complete mathematical expressions from natural-language messages
+- Detecting malformed mathematical expressions
+- Detecting contextual shorthand operations
+
+The parser supports common mathematical vocabulary in English, Portuguese, and Spanish.
+
+Examples:
+
+```text
+How much is 5 + 4?       -> 5+4
+Quanto é 5 + 4?          -> 5+4
+¿Cuánto es 5 + 4?        -> 5+4
+five plus four           -> 5+4
+cinco más cuatro         -> 5+4
+```
+
+### Intent Parser
+
+`core/intent_parser.py` handles contextual mathematical operations such as:
+
+```text
+divide 2
+subtract 3
+add 5
+multiply 2
+```
+
+and Portuguese equivalents such as:
+
+```text
+dividido por 2
+menos 3
+mais 5
+multiplica por 2
+```
+
+These operations use the latest result stored in session memory as the first operand.
+
+The parsing logic is deterministic and does not rely on an LLM to infer the mathematical operation.
 
 ## Memory
 
@@ -302,11 +329,9 @@ memory.save_result(result)
 memory.get_last_result()
 ```
 
----
-
 ## LLM Provider Architecture
 
-The project separates the application from the concrete LLM provider through a provider abstraction.
+The project separates the application from concrete LLM implementations through a provider abstraction.
 
 ```text
 Application
@@ -317,24 +342,35 @@ Provider Factory
      v
 Base Provider
      |
+     +------------------+
+     |                  |
+     v                  v
+Ollama Provider    Other Providers
+     |              (available)
      v
-Ollama Provider
+  Ollama
      |
      v
-Ollama
+llama3.2:3b
 ```
 
-The current local provider uses Ollama with:
+The local application uses Ollama with:
 
 ```text
 llama3.2:3b
 ```
 
-This abstraction allows the application logic to remain independent from the specific LLM implementation.
+Provider-related modules are located under:
 
-The agents interact with the provider interface rather than directly coupling their logic to Ollama.
-
----
+```text
+llm/
+    provider_factory.py
+    providers/
+        base_provider.py
+        ollama_provider.py
+        openai_provider.py
+        claude_provider.py
+```
 
 ## Project Structure
 
@@ -360,6 +396,8 @@ chatbot-project/
 |   +-- providers/
 |       +-- base_provider.py
 |       +-- ollama_provider.py
+|       +-- openai_provider.py
+|       +-- claude_provider.py
 |
 +-- tests/
 |
@@ -371,51 +409,46 @@ chatbot-project/
 
 ### Directory responsibilities
 
-| Directory   | Responsibility                                        |
-| ----------- | ----------------------------------------------------- |
-| `agents/`   | Agent-specific application logic                      |
-| `core/`     | Mathematical parsing, context detection, and tools    |
+| Directory | Responsibility |
+| --- | --- |
+| `agents/` | Agent-specific application logic |
+| `core/` | Mathematical parsing, context detection, and tools |
 | `services/` | Application services such as orchestration and memory |
-| `llm/`      | LLM provider abstraction and implementations          |
-| `tests/`    | Automated tests                                       |
-| `app.py`    | Streamlit user interface                              |
-
----
+| `llm/` | LLM provider abstraction and implementations |
+| `tests/` | Automated tests |
+| `app.py` | Streamlit user interface |
 
 ## Technologies
 
-* Python
-* Streamlit
-* Ollama
-* `llama3.2:3b`
-* pytest
-* Black
-* Flake8
-* Isort
+- Python
+- Streamlit
+- Ollama
+- `llama3.2:3b`
+- pytest
+- pytest-cov
+- Black
+- Flake8
+- Isort
 
 The project intentionally does not use:
 
-* LangChain
-* CrewAI
-* FastAPI
-
----
+- LangChain
+- CrewAI
+- FastAPI
 
 ## Requirements
 
 Before running the application, make sure the following are installed:
 
-* Python 3.10+
-* Ollama
-* Git
+- Python 3.10+
+- Ollama
+- Git
 
 The project also requires the Ollama model:
 
 ```text
 llama3.2:3b
 ```
-
----
 
 ## Installation
 
@@ -450,8 +483,6 @@ Make sure Ollama is running and the required model is available:
 ollama pull llama3.2:3b
 ```
 
----
-
 ## Running the Application
 
 Start the Streamlit application:
@@ -459,10 +490,6 @@ Start the Streamlit application:
 ```bash
 streamlit run app.py
 ```
-
-Streamlit will provide a local URL where the chatbot can be accessed.
-
----
 
 ## Testing
 
@@ -472,59 +499,64 @@ Run the complete test suite:
 python -m pytest -q
 ```
 
-Current status: **100 passing tests**.
+Run the test suite with coverage:
 
-The test suite covers the core mathematical workflow, memory, orchestration, Writer Agent behavior, and other application components.
+```bash
+python -m pytest --cov --cov-report=term-missing -q
+```
 
----
+Current status:
+
+```text
+103 passing tests
+91.45% code coverage
+80% minimum coverage threshold
+```
+
+Coverage is measured only against production code in:
+
+```text
+agents/
+core/
+llm/
+services/
+```
+
+The `app.py` Streamlit interface is kept outside the coverage source because it is the presentation layer.
+
+The minimum required coverage is enforced through `pyproject.toml`.
 
 ## Code Quality
 
-The project uses automated tools to maintain consistent code quality.
-
 ### Black
-
-Check formatting:
 
 ```bash
 black --check .
 ```
 
-Format the project:
-
-```bash
-black .
-```
-
 ### Isort
-
-Check import ordering:
 
 ```bash
 isort --check-only .
 ```
 
-Sort imports:
-
-```bash
-isort .
-```
-
 ### Flake8
-
-Run linting:
 
 ```bash
 flake8 .
 ```
 
-The project uses `pyproject.toml` to configure Isort compatibility with Black.
+### Coverage
 
----
+The project enforces a minimum coverage of 80%.
+
+Current coverage:
+
+```text
+91.45%
+```
 
 ## Design Principles
-
-The implementation follows several important principles.
 
 ### Separation of responsibilities
 
@@ -564,7 +596,9 @@ The application does not directly couple agent logic to a specific LLM implement
 
 The Writer Agent is constrained so that generated text cannot replace the authoritative mathematical result with a value produced by the model.
 
----
+### Testable architecture
+
+Core mathematical logic, agents, services, and provider components are separated from the Streamlit presentation layer, making the main application behavior independently testable.
 
 ## Multilingual Mathematical Parsing
 
@@ -573,21 +607,33 @@ The mathematical parser supports English, Portuguese, and Spanish expressions.
 Examples:
 
 ```text
-How much is 5 + 4?   -> 9
-Quanto é 5 + 4?      -> 9
-¿Cuánto es 5 + 4?    -> 9
+How much is 5 + 4?       -> 9
+Quanto é 5 + 4?          -> 9
+¿Cuánto es 5 + 4?        -> 9
 ```
 
 The parser also supports written-number operations such as:
 
 ```text
-five plus four       -> 9
-cinco más cuatro     -> 9
+five plus four           -> 9
+cinco más cuatro         -> 9
+```
+
+Contextual mathematical operations are also supported across multiple languages.
+
+Examples:
+
+```text
+5 + 4
+divide 2
+```
+
+```text
+5 + 4
+dividido por 2
 ```
 
 Mathematical results remain deterministic regardless of the language used in the input.
-
----
 
 ## Example Conversation
 
@@ -607,20 +653,18 @@ Bot: The result is 5.
 
 The mathematical values in this flow are produced by the application tools and preserved through session memory.
 
----
-
 ## Project Goal
 
 This project demonstrates the fundamental concepts required to build a small agent-based AI application:
 
-* Agent orchestration
-* Tool usage
-* Memory
-* Context management
-* Prompt engineering
-* Guardrails
-* LLM provider abstraction
-* Automated testing
-* Code quality
+- Agent orchestration
+- Tool usage
+- Memory
+- Context management
+- Prompt engineering
+- Guardrails
+- LLM provider abstraction
+- Automated testing
+- Code quality
 
 The architecture is intentionally simple so that the responsibilities and data flow remain explicit and easy to understand.
