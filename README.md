@@ -59,84 +59,83 @@ In the second interaction, the Math Agent retrieves `9` from memory and applies 
 The application follows a simple layered architecture that separates responsibilities between mathematical processing, orchestration, language generation, and memory.
 
 ```text
-                         ┌──────────────────┐
-                         │    Streamlit     │
-                         │      app.py      │
-                         └────────┬─────────┘
-                                  │
-                                  ▼
-                         ┌──────────────────┐
-                         │   Orchestrator   │
-                         │   Coordinates    │
-                         └───────┬──────────┘
-                                 │
-                    ┌────────────┴────────────┐
-                    │                         │
-                    ▼                         ▼
-            ┌───────────────┐         ┌────────────────┐
-            │   Math Agent  │         │  Writer Agent  │
-            │               │         │                │
-            │ Parse context │         │ Natural        │
-            │ Call tools    │         │ language       │
-            │ Store result  │         │ response       │
-            └───────┬───────┘         └───────┬────────┘
-                    │                         │
-                    ▼                         ▼
-            ┌───────────────┐         ┌────────────────┐
-            │ Mathematical  │         │ LLM Provider   │
-            │    Tools      │         │   Abstraction  │
-            └───────────────┘         └───────┬────────┘
-                                              │
-                                              ▼
-                                       ┌──────────────┐
-                                       │    Ollama    │
-                                       │ llama3.2:3b  │
-                                       └──────────────┘
+                         +----------------------+
+                         |      Streamlit       |
+                         |        app.py        |
+                         +----------+-----------+
+                                    |
+                                    v
+                         +----------------------+
+                         |    Orchestrator      |
+                         |     Coordinates      |
+                         +----------+-----------+
+                                    |
+                       +------------+------------+
+                       |                         |
+                       v                         v
+              +----------------+       +----------------+
+              |   Math Agent   |       |  Writer Agent  |
+              |                |       |                |
+              | Parse context  |       | Natural        |
+              | Call tools     |       | language       |
+              | Store result   |       | response       |
+              +-------+--------+       +-------+--------+
+                      |                        |
+                      v                        v
+              +----------------+       +----------------+
+              | Mathematical   |       |  LLM Provider  |
+              |     Tools      |       |  Abstraction   |
+              +----------------+       +-------+--------+
+                                               |
+                                               v
+                                        +--------------+
+                                        |    Ollama    |
+                                        | llama3.2:3b  |
+                                        +--------------+
 
-                    ┌──────────────────┐
-                    │      Memory      │
-                    │ Latest math      │
-                    │     result       │
-                    └──────────────────┘
+              +----------------------+
+              |       Memory         |
+              | Latest math result   |
+              +----------------------+
 ```
 
 ### Responsibility flow
 
 ```text
 User message
-     │
-     ▼
+     |
+     v
 Streamlit
-     │
-     ▼
+     |
+     v
 Orchestrator
-     │
-     ▼
+     |
+     v
 Math Agent
-     │
-     ├── Complete expression ──► Math Tools
-     │                              │
-     │                              ▼
-     │                           Result
-     │                              │
-     │                              ▼
-     │                           Memory
-     │
-     ├── Contextual operation ──► Memory
-     │                              │
-     │                              ▼
-     │                         Math Tools
-     │                              │
-     │                              ▼
-     │                           Result
-     │
-     ▼
+     |
+     +-- Complete expression ------> Math Tools
+     |                                  |
+     |                                  v
+     |                               Result
+     |                                  |
+     |                                  v
+     |                               Memory
+     |
+     +-- Contextual operation ------> Memory
+                                        |
+                                        v
+                                   Math Tools
+                                        |
+                                        v
+                                     Result
+     |
+     v
 Writer Agent
-     │
-     ▼
+     |
+     v
 Natural-language response
-     │
-     ▼
+     |
+     v
 Streamlit
 ```
 
@@ -188,12 +187,12 @@ For example:
 User: 5 + 4
 
 Math Agent
-    │
-    ├── Parse expression
-    │
-    ├── Call add(5, 4)
-    │
-    └── Result = 9
+    |
+    +-- Parse expression
+    |
+    +-- Call add(5, 4)
+    |
+    +-- Result = 9
 ```
 
 The value `9` is then passed to the Writer Agent as an authoritative result.
@@ -241,7 +240,7 @@ For example:
 is processed as:
 
 ```text
-add(5, 4) → 9
+add(5, 4) -> 9
 ```
 
 For contextual operations:
@@ -255,15 +254,20 @@ the workflow becomes:
 
 ```text
 5 + 4
-    ↓
+    |
+    v
 add(5, 4)
-    ↓
+    |
+    v
 9
-    ↓
+    |
+    v
 Memory
-    ↓
+    |
+    v
 divide(9, 2)
-    ↓
+    |
+    v
 4.5
 ```
 
@@ -306,17 +310,17 @@ The project separates the application from the concrete LLM provider through a p
 
 ```text
 Application
-     │
-     ▼
+     |
+     v
 Provider Factory
-     │
-     ▼
+     |
+     v
 Base Provider
-     │
-     ▼
+     |
+     v
 Ollama Provider
-     │
-     ▼
+     |
+     v
 Ollama
 ```
 
@@ -336,33 +340,33 @@ The agents interact with the provider interface rather than directly coupling th
 
 ```text
 chatbot-project/
-│
-├── agents/
-│   ├── math_agent.py
-│   └── writer_agent.py
-│
-├── core/
-│   ├── context_detector.py
-│   ├── expression_extractor.py
-│   ├── intent_parser.py
-│   └── tools.py
-│
-├── services/
-│   ├── memory.py
-│   └── orchestrator.py
-│
-├── llm/
-│   ├── provider_factory.py
-│   └── providers/
-│       ├── base_provider.py
-│       └── ollama_provider.py
-│
-├── tests/
-│
-├── app.py
-├── pyproject.toml
-├── requirements.txt
-└── README.md
+|
++-- agents/
+|   +-- math_agent.py
+|   +-- writer_agent.py
+|
++-- core/
+|   +-- context_detector.py
+|   +-- expression_extractor.py
+|   +-- intent_parser.py
+|   +-- tools.py
+|
++-- services/
+|   +-- memory.py
+|   +-- orchestrator.py
+|
++-- llm/
+|   +-- provider_factory.py
+|   +-- providers/
+|       +-- base_provider.py
+|       +-- ollama_provider.py
+|
++-- tests/
+|
++-- app.py
++-- pyproject.toml
++-- requirements.txt
++-- README.md
 ```
 
 ### Directory responsibilities
@@ -468,6 +472,8 @@ Run the complete test suite:
 python -m pytest -q
 ```
 
+Current status: **100 passing tests**.
+
 The test suite covers the core mathematical workflow, memory, orchestration, Writer Agent behavior, and other application components.
 
 ---
@@ -557,6 +563,29 @@ The application does not directly couple agent logic to a specific LLM implement
 ### Guardrails
 
 The Writer Agent is constrained so that generated text cannot replace the authoritative mathematical result with a value produced by the model.
+
+---
+
+## Multilingual Mathematical Parsing
+
+The mathematical parser supports English, Portuguese, and Spanish expressions.
+
+Examples:
+
+```text
+How much is 5 + 4?   -> 9
+Quanto é 5 + 4?      -> 9
+¿Cuánto es 5 + 4?    -> 9
+```
+
+The parser also supports written-number operations such as:
+
+```text
+five plus four       -> 9
+cinco más cuatro     -> 9
+```
+
+Mathematical results remain deterministic regardless of the language used in the input.
 
 ---
 
