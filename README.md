@@ -80,8 +80,8 @@ The application follows a simple layered architecture that separates responsibil
                +----------------+       +----------------+
                |   Math Agent   |       |  Writer Agent  |
                |                |       |                |
-               | Parse context  |       | Natural        |
-               | Parse math     |       | language       |
+               | Parse math     |       | Natural        |
+               | Parse context  |       | language       |
                | Call tools     |       | response       |
                | Store result   |       | guardrails     |
                +-------+--------+       +-------+--------+
@@ -174,8 +174,7 @@ Its responsibilities include:
 
 * Detecting mathematical expressions
 * Normalizing mathematical expressions
-* Tokenizing expressions
-* Evaluating expressions with operator precedence
+* Extracting supported mathematical expressions
 * Parsing contextual mathematical operations
 * Retrieving previous results from memory
 * Calling mathematical tools
@@ -272,7 +271,7 @@ divide(9, 2)
 4.5
 ```
 
-Division by zero and unsupported operations are handled by the mathematical tool layer.
+Division by zero and unsupported operations are handled by the mathematical tool and parsing layers.
 
 ## Mathematical Parsing
 
@@ -284,10 +283,9 @@ The application uses deterministic parsing components instead of delegating math
 
 * Normalizing mathematical vocabulary
 * Converting supported number words into numeric values
-* Converting mathematical words into operators
+* Converting supported mathematical words into operators
 * Extracting complete mathematical expressions from natural-language messages
 * Detecting malformed mathematical expressions
-* Detecting contextual shorthand operations
 
 The parser supports common mathematical vocabulary in English, Portuguese, and Spanish.
 
@@ -513,6 +511,18 @@ The project also requires the Ollama model:
 llama3.2:3b
 ```
 
+For Windows systems using an AMD GPU through Vulkan, the application can be configured with:
+
+```powershell
+setx OLLAMA_VULKAN "1"
+setx GGML_VK_VISIBLE_DEVICES "0"
+setx HIP_VISIBLE_DEVICES "-1"
+```
+
+After setting these variables, restart the Ollama process and open a new terminal session so the environment variables are applied to newly started processes.
+
+The exact Vulkan device index may vary depending on the GPUs detected by the system.
+
 ## Installation
 
 Clone the repository:
@@ -554,6 +564,26 @@ Start the Streamlit application:
 streamlit run app.py
 ```
 
+The application will open the Streamlit chat interface in the browser.
+
+Example contextual workflow:
+
+```text
+5+4
+divide 2
+subtract 1
+multiply 30
+```
+
+Expected results:
+
+```text
+9
+4.5
+3.5
+105
+```
+
 ## Testing
 
 Run the complete test suite:
@@ -568,17 +598,17 @@ Run the test suite with coverage:
 python -m pytest --cov --cov-report=term-missing -q
 ```
 
-Current status:
+Current validated status:
 
 ```text
 103 passing tests
 
-91.48% code coverage
+91.54% code coverage
 
 80% minimum coverage threshold
 ```
 
-Coverage is measured only against production code in:
+Coverage is measured against production code in:
 
 ```text
 agents/
@@ -618,10 +648,10 @@ flake8 .
 
 The project enforces a minimum coverage of 80%.
 
-Current coverage:
+Current validated coverage:
 
 ```text
-91.45%
+91.54%
 ```
 
 ## Design Principles
