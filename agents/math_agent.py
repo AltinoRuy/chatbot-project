@@ -9,10 +9,37 @@ from core.intent_parser import parse_intent
 from core.tools import add, divide, multiply, subtract
 from services.memory import Memory
 
+MATH_AGENT_PROMPT = """
+You are the Math Agent.
+
+Your responsibilities are:
+- Identify and process mathematical requests.
+- Interpret complete mathematical expressions and contextual operations.
+- Use the available mathematical tools for every calculation.
+- Treat tool results as the only source of truth.
+- Use the previous mathematical result when a contextual operation requires it.
+- Return structured mathematical results to the orchestrator.
+
+You must not:
+- Perform calculations using language-model reasoning.
+- Generate conversational responses for the user.
+- Rewrite or modify authoritative mathematical results.
+- Perform tasks outside mathematical processing.
+
+Mathematical operations must always be executed through the appropriate tool.
+"""
+
 
 @dataclass
 class MathResult:
-    """Structured result returned by the Math Agent."""
+    """Structured result returned by the Math Agent.
+
+    Attributes:
+        handled: Whether the message was identified as a mathematical task.
+        result: Authoritative mathematical result, if available.
+        needs_context: Whether the task requires a previous mathematical
+            result that is not currently available.
+    """
 
     handled: bool
     result: float | None = None

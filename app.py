@@ -30,8 +30,6 @@ if prompt:
         }
     )
 
-    st.write("PROCESSANDO:", prompt)
-
     response = process_message(
         prompt,
         st.session_state.memory,
