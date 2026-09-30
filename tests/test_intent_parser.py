@@ -1,4 +1,4 @@
-from core.intent_parser import parse_intent
+﻿from core.intent_parser import parse_intent
 
 
 def test_returns_none_for_empty_value() -> None:
@@ -221,3 +221,45 @@ def test_returns_none_for_invalid_multiplication_value() -> None:
     result = parse_intent("multiplique por banana")
 
     assert result is None
+
+
+def test_parse_context_prefix() -> None:
+    result = parse_intent("agora subtraia 2")
+
+    assert result == ("-", 2.0)
+
+
+def test_parse_context_prefix_with_por() -> None:
+    result = parse_intent("agora subtraia por 2")
+
+    assert result == ("-", 2.0)
+
+
+def test_parse_english_contextual_multiplication_with_that() -> None:
+    result = parse_intent("Multiply that by 8.")
+
+    assert result == ("*", 8.0)
+
+
+def test_parse_english_contextual_multiplication_with_prefix() -> None:
+    result = parse_intent("Now multiply by 8.")
+
+    assert result == ("*", 8.0)
+
+
+def test_parse_english_contextual_division_with_prefix() -> None:
+    result = parse_intent("Then divide by 7.")
+
+    assert result == ("/", 7.0)
+
+
+def test_parse_spanish_contextual_division_with_result_reference() -> None:
+    result = parse_intent("Ahora divide el resultado por 7.")
+
+    assert result == ("/", 7.0)
+
+
+def test_parse_english_contextual_division_with_result_reference() -> None:
+    result = parse_intent("Divide the result by 7.")
+
+    assert result == ("/", 7.0)

@@ -1,4 +1,6 @@
-import re
+﻿import re
+
+from core.intent_parser import parse_intent
 
 NUMBER_WORDS = {
     "zero": "0",
@@ -8,6 +10,10 @@ NUMBER_WORDS = {
     "duas": "2",
     "tres": "3",
     "três": "3",
+    "trÃªs": "3",
+    "trãªs": "3",
+    "trÃƒÂªs": "3",
+    "trãƒâªs": "3",
     "quatro": "4",
     "cuatro": "4",
     "cinco": "5",
@@ -16,6 +22,7 @@ NUMBER_WORDS = {
     "oito": "8",
     "nove": "9",
     "dez": "10",
+    "vinte": "20",
     "one": "1",
     "two": "2",
     "three": "3",
@@ -26,6 +33,7 @@ NUMBER_WORDS = {
     "eight": "8",
     "nine": "9",
     "ten": "10",
+    "twenty": "20",
 }
 
 
@@ -38,6 +46,10 @@ OPERATOR_WORDS = {
     "multiplied by": "*",
     "vezes": "*",
     "times": "*",
+    "mÃƒÂ¡s": "+",
+    "mÃ¡s": "+",
+    "mãƒâ¡s": "+",
+    "mã¡s": "+",
     "más": "+",
     "mas": "+",
     "mais": "+",
@@ -77,7 +89,11 @@ def normalize_expression(message: str) -> str:
             expression,
         )
 
-    for word, number in NUMBER_WORDS.items():
+    for word, number in sorted(
+        NUMBER_WORDS.items(),
+        key=lambda item: len(item[0]),
+        reverse=True,
+    ):
         expression = re.sub(
             rf"\b{re.escape(word)}\b",
             number,
@@ -89,32 +105,153 @@ def normalize_expression(message: str) -> str:
     return expression
 
 
+def _is_valid_candidate(candidate: str) -> bool:
+    """Validates the syntax of a mathematical expression candidate.
+
+    Args:
+        candidate: Candidate mathematical expression.
+
+    Returns:
+        True if the candidate contains valid operands, operators,
+        and balanced parentheses.
+    """
+    if not candidate:
+        return False
+
+    if not re.fullmatch(r"[0-9.+\-*/()]+", candidate):
+        return False
+
+    depth = 0
+    expect_operand = True
+    index = 0
+
+    while index < len(candidate):
+        character = candidate[index]
+
+        if character == "(":
+            if not expect_operand:
+                return False
+
+            depth += 1
+            index += 1
+            continue
+
+        if character == ")":
+            if expect_operand:
+                return False
+
+            depth -= 1
+
+            if depth < 0:
+                return False
+
+            expect_operand = False
+            index += 1
+            continue
+
+        if character in {"+", "-", "*", "/"}:
+            if expect_operand:
+                if character != "-":
+                    return False
+
+                index += 1
+
+                if index >= len(candidate):
+                    return False
+
+                if not candidate[index].isdigit():
+                    return False
+
+                start = index
+
+                while index < len(candidate) and (
+                    candidate[index].isdigit() or candidate[index] == "."
+                ):
+                    index += 1
+
+                number = candidate[start:index]
+
+                if number.count(".") > 1 or number == ".":
+                    return False
+
+                expect_operand = False
+                continue
+
+            expect_operand = True
+            index += 1
+            continue
+
+        if character.isdigit():
+            start = index
+
+            while index < len(candidate) and (
+                candidate[index].isdigit() or candidate[index] == "."
+            ):
+                index += 1
+
+            number = candidate[start:index]
+
+            if number.count(".") > 1 or number == ".":
+                return False
+
+            expect_operand = False
+            continue
+
+        return False
+
+    return depth == 0 and not expect_operand
+
+
 def _extract_candidate(expression: str) -> str | None:
-    """Extracts a mathematical expression from normalized text.
+    """Extracts a complete mathematical expression from normalized text.
 
     Args:
         expression: Normalized expression candidate.
 
     Returns:
-        A mathematical expression if one is found, otherwise None.
+        A complete mathematical expression if one is found, otherwise None.
     """
-    number = r"-?\d+(?:\.\d+)?"
-    operator = r"[+\-*/]"
+    allowed_characters = set("0123456789.+-*/()")
 
-    pattern = rf"(?P<expression>{number}(?:{operator}{number})+)"
+    candidates: list[str] = []
+    current: list[str] = []
 
-    matches = re.findall(pattern, expression)
+    for character in expression:
+        if character in allowed_characters:
+            current.append(character)
+            continue
 
-    if not matches:
-        return None
+        if current:
+            candidates.append("".join(current))
+            current = []
 
-    return matches[0]
+    if current:
+        candidates.append("".join(current))
+
+    for candidate in candidates:
+        if _is_valid_candidate(candidate) and _contains_operation(candidate):
+            return candidate
+
+    return None
+
+
+def _contains_operation(expression: str) -> bool:
+    """Checks whether an expression contains a mathematical operation.
+
+    Args:
+        expression: Mathematical expression.
+
+    Returns:
+        True if the expression contains at least one operator.
+    """
+    return bool(re.search(r"[+\-*/]", expression))
 
 
 def extract_expression(message: str) -> str | None:
     """Extracts a complete mathematical expression from a message.
 
-    The expression may appear by itself or inside a natural-language sentence.
+    Contextual mathematical operations are excluded so they can be handled
+    by the intent parser using the previous mathematical result.
 
     Args:
         message: User message containing a mathematical expression.
@@ -122,17 +259,15 @@ def extract_expression(message: str) -> str | None:
     Returns:
         The normalized mathematical expression if valid, otherwise None.
     """
+    if is_context_operation(message):
+        return None
+
     expression = normalize_expression(message)
 
     if not expression:
         return None
 
-    candidate = _extract_candidate(expression)
-
-    if candidate is None:
-        return None
-
-    return candidate
+    return _extract_candidate(expression)
 
 
 def is_context_operation(message: str) -> bool:
@@ -151,7 +286,10 @@ def is_context_operation(message: str) -> bool:
 
     pattern = rf"^[+\-*/]{number}$"
 
-    return re.fullmatch(pattern, expression) is not None
+    if re.fullmatch(pattern, expression):
+        return True
+
+    return parse_intent(message) is not None
 
 
 def _has_math_operator(expression: str) -> bool:

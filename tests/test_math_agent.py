@@ -46,6 +46,33 @@ def test_calculate_subtraction() -> None:
     assert calculate(10, "-", 3) == 7
 
 
+def test_solve_expression_with_parentheses() -> None:
+    assert solve("(2+3)*4") == 20
+
+
+def test_solve_nested_parenthesized_expression() -> None:
+    assert solve("((18+6)/3)*4-5") == 27
+
+
+def test_solve_invalid_unclosed_parenthesis() -> None:
+    with pytest.raises(ValueError):
+        solve("(2+3")
+
+
+def test_solve_invalid_unopened_parenthesis() -> None:
+    with pytest.raises(ValueError):
+        solve("2+3)")
+
+
+def test_solve_invalid_operator_after_parenthesis() -> None:
+    with pytest.raises(ValueError):
+        solve("(2+3)*")
+
+
+def test_solve_preserves_operator_precedence() -> None:
+    assert solve("10+5*2") == 20
+
+
 def test_process_math_message_with_complete_expression() -> None:
     memory = Memory()
 

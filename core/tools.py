@@ -1,3 +1,7 @@
+class DivisionByZeroError(ValueError):
+    """Raised when a division by zero is attempted."""
+
+
 def add(a: float, b: float) -> float:
     """Adds two numbers.
 
@@ -48,9 +52,9 @@ def divide(a: float, b: float) -> float:
         The quotient of a divided by b.
 
     Raises:
-        ValueError: If b is zero.
+        DivisionByZeroError: If b is zero.
     """
     if b == 0:
-        raise ValueError("Cannot divide by zero")
+        raise DivisionByZeroError("Cannot divide by zero")
 
     return a / b

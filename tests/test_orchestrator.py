@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from agents.math_agent import MathResult
+from core.tools import DivisionByZeroError
 from services.memory import Memory
 from services.orchestrator import process_message
 
@@ -107,6 +108,31 @@ def test_process_message_with_complete_expression() -> None:
     )
 
 
+def test_process_message_with_division_by_zero_error() -> None:
+    memory = Memory()
+
+    with (
+        patch(
+            "services.orchestrator.process_math_message",
+            side_effect=DivisionByZeroError(
+                "Cannot divide by zero",
+            ),
+        ) as mock_process_math,
+        patch(
+            "services.orchestrator.write_response",
+            return_value="It is not possible to divide by zero.",
+        ) as mock_write_response,
+    ):
+        result = process_message("10 / 0", memory)
+
+    assert result == "It is not possible to divide by zero."
+    mock_process_math.assert_called_once_with("10 / 0", memory)
+    mock_write_response.assert_called_once_with(
+        "10 / 0",
+        error="Cannot divide by zero",
+    )
+
+
 def test_process_message_with_math_error() -> None:
     memory = Memory()
 
@@ -175,15 +201,15 @@ def test_process_message_with_spanish_expression() -> None:
             return_value="El resultado es 9.",
         ) as mock_write_response,
     ):
-        result = process_message("¿Cuánto es 5 + 4?", memory)
+        result = process_message("Â¿CuÃ¡nto es 5 + 4?", memory)
 
     assert result == "El resultado es 9."
     mock_process_math.assert_called_once_with(
-        "¿Cuánto es 5 + 4?",
+        "Â¿CuÃ¡nto es 5 + 4?",
         memory,
     )
     mock_write_response.assert_called_once_with(
-        "¿Cuánto es 5 + 4?",
+        "Â¿CuÃ¡nto es 5 + 4?",
         9.0,
     )
 
@@ -203,8 +229,5 @@ def test_process_message_with_invalid_word_expression() -> None:
         result = process_message("banana+banana", memory)
 
     assert result == "Invalid mathematical expression."
-    mock_process_math.assert_called_once_with(
-        "banana+banana",
-        memory,
-    )
+    mock_process_math.assert_called_once_with("banana+banana", memory)
     mock_write_response.assert_not_called()

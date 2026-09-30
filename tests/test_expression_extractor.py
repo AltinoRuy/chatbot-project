@@ -1,4 +1,4 @@
-from core.expression_extractor import (
+﻿from core.expression_extractor import (
     extract_expression,
     is_context_operation,
     is_invalid_mathematical_expression,
@@ -43,6 +43,14 @@ def test_extract_expression_inside_english_sentence() -> None:
 
 def test_extract_expression_inside_spanish_sentence() -> None:
     assert extract_expression("¿Cuánto es 5 + 4?") == "5+4"
+
+
+def test_extract_expression_with_large_number_word() -> None:
+    assert extract_expression("vinte mais 7 menos três") == "20+7-3"
+
+
+def test_extract_parenthesized_expression() -> None:
+    assert extract_expression("((18 + 6) / 3) * 4 - 5") == "((18+6)/3)*4-5"
 
 
 def test_returns_none_for_non_math_text() -> None:
@@ -95,3 +103,11 @@ def test_ignore_sentence_with_numbers_without_operator() -> None:
 
 def test_ignore_plain_word() -> None:
     assert is_invalid_mathematical_expression("banana") is False
+
+
+def test_context_operation_with_prefix() -> None:
+    assert is_context_operation("agora subtraia por 2") is True
+
+
+def test_context_operation_with_prefix_is_not_invalid() -> None:
+    assert is_invalid_mathematical_expression("agora subtraia por 2") is False

@@ -83,14 +83,17 @@ def tokenize(expression: str) -> list[str]:
     """Tokenizes a mathematical expression.
 
     A minus sign is treated as a negative sign when it appears at the
-    beginning of the expression or immediately after another operator.
-    Otherwise, it is treated as the subtraction operator.
+    beginning of the expression or immediately after an operator or an
+    opening parenthesis. Otherwise, it is treated as the subtraction
+    operator.
+
+    Parentheses are preserved as individual tokens.
 
     Args:
         expression: Mathematical expression to tokenize.
 
     Returns:
-        A list containing numbers and operators.
+        A list containing numbers, operators, and parentheses.
 
     Raises:
         ValueError: If the expression contains an invalid token.
@@ -111,10 +114,15 @@ def tokenize(expression: str) -> list[str]:
             ):
                 i += 1
 
-            tokens.append(expression[start:i])
+            number = expression[start:i]
+
+            if number.count(".") > 1 or number == ".":
+                raise ValueError("Invalid mathematical expression.")
+
+            tokens.append(number)
             continue
 
-        if character == "-" and (not tokens or tokens[-1] in {"+", "-", "*", "/"}):
+        if character == "-" and (not tokens or tokens[-1] in {"+", "-", "*", "/", "("}):
             i += 1
             start = i
 
@@ -126,10 +134,15 @@ def tokenize(expression: str) -> list[str]:
             if start == i:
                 raise ValueError("Invalid mathematical expression.")
 
-            tokens.append(f"-{expression[start:i]}")
+            number = expression[start:i]
+
+            if number.count(".") > 1 or number == ".":
+                raise ValueError("Invalid mathematical expression.")
+
+            tokens.append(f"-{number}")
             continue
 
-        if character in {"+", "-", "*", "/"}:
+        if character in {"+", "-", "*", "/", "(", ")"}:
             tokens.append(character)
             i += 1
             continue
@@ -139,11 +152,119 @@ def tokenize(expression: str) -> list[str]:
     return tokens
 
 
-def evaluate_tokens(tokens: list[str]) -> float:
-    """Evaluates tokenized mathematical expressions with operator precedence.
+class _ExpressionParser:
+    """Parses and evaluates mathematical expressions.
 
-    Multiplication and division are evaluated before addition and subtraction.
-    Operations with equal precedence are evaluated from left to right.
+    The parser implements standard mathematical precedence:
+
+    1. Parentheses.
+    2. Multiplication and division.
+    3. Addition and subtraction.
+
+    Every binary operation is delegated to ``calculate`` so that the
+    mathematical tools remain the source of truth.
+    """
+
+    def __init__(self, tokens: list[str]) -> None:
+        """Initializes the expression parser.
+
+        Args:
+            tokens: Tokenized mathematical expression.
+        """
+        self.tokens = tokens
+        self.position = 0
+
+    def parse(self) -> float:
+        """Parses the complete token sequence.
+
+        Returns:
+            The calculated result.
+
+        Raises:
+            ValueError: If the expression is syntactically invalid.
+        """
+        if not self.tokens:
+            raise ValueError("Invalid mathematical expression.")
+
+        result = self._parse_expression()
+
+        if self.position != len(self.tokens):
+            raise ValueError("Invalid mathematical expression.")
+
+        return result
+
+    def _parse_expression(self) -> float:
+        """Parses addition and subtraction."""
+        result = self._parse_term()
+
+        while self._match("+") or self._match("-"):
+            operator = self.tokens[self.position - 1]
+            right = self._parse_term()
+            result = calculate(result, operator, right)
+
+        return result
+
+    def _parse_term(self) -> float:
+        """Parses multiplication and division."""
+        result = self._parse_factor()
+
+        while self._match("*") or self._match("/"):
+            operator = self.tokens[self.position - 1]
+            right = self._parse_factor()
+            result = calculate(result, operator, right)
+
+        return result
+
+    def _parse_factor(self) -> float:
+        """Parses numbers and parenthesized expressions."""
+        if self._match("("):
+            result = self._parse_expression()
+
+            if not self._match(")"):
+                raise ValueError("Invalid mathematical expression.")
+
+            return result
+
+        if self.position >= len(self.tokens):
+            raise ValueError("Invalid mathematical expression.")
+
+        token = self.tokens[self.position]
+
+        if token in {"+", "-", "*", "/", ")"}:
+            raise ValueError("Invalid mathematical expression.")
+
+        self.position += 1
+
+        try:
+            return float(token)
+        except ValueError as error:
+            raise ValueError("Invalid mathematical expression.") from error
+
+    def _match(self, token: str) -> bool:
+        """Consumes a token if it matches the expected value.
+
+        Args:
+            token: Token to match.
+
+        Returns:
+            True if the current token matched and was consumed.
+        """
+        if self.position >= len(self.tokens):
+            return False
+
+        if self.tokens[self.position] != token:
+            return False
+
+        self.position += 1
+        return True
+
+
+def evaluate_tokens(tokens: list[str]) -> float:
+    """Evaluates tokenized mathematical expressions.
+
+    Mathematical precedence and parentheses are handled by the expression
+    parser. All binary calculations are delegated to the mathematical tools
+    through ``calculate``.
 
     Args:
         tokens: Tokenized mathematical expression.
@@ -154,42 +275,9 @@ def evaluate_tokens(tokens: list[str]) -> float:
     Raises:
         ValueError: If the token sequence is invalid.
     """
-    values: list[float | str] = []
+    parser = _ExpressionParser(tokens)
 
-    i = 0
-
-    while i < len(tokens):
-        token = tokens[i]
-
-        if token in {"*", "/"}:
-            if not values or i + 1 >= len(tokens):
-                raise ValueError("Invalid mathematical expression.")
-
-            left = float(values.pop())
-            right = float(tokens[i + 1])
-
-            values.append(calculate(left, token, right))
-            i += 2
-            continue
-
-        values.append(token)
-        i += 1
-
-    if not values:
-        raise ValueError("Invalid mathematical expression.")
-
-    result = float(values[0])
-
-    i = 1
-
-    while i < len(values):
-        operator = values[i]
-        right = float(values[i + 1])
-
-        result = calculate(result, operator, right)
-        i += 2
-
-    return result
+    return parser.parse()
 
 
 def solve(expression: str) -> float:
@@ -206,7 +294,7 @@ def solve(expression: str) -> float:
     """
     tokens = tokenize(expression)
 
-    if len(tokens) < 3:
+    if not tokens:
         raise ValueError("Invalid mathematical expression.")
 
     return evaluate_tokens(tokens)

@@ -8,6 +8,8 @@ NUMBER_WORDS = {
     "duas": 2,
     "tres": 3,
     "três": 3,
+    "trãªs": 3,
+    "trãƒâªs": 3,
     "quatro": 4,
     "cinco": 5,
     "seis": 6,
@@ -66,39 +68,55 @@ def parse_intent(message: str) -> tuple[str, float] | None:
         operator, value = shorthand.groups()
         return operator, float(value)
 
+    prefix = (
+        r"(?:agora|ahora|now|then|então|entao|después|despues|depois|"
+        r"por favor|please)?\s*"
+    )
+
+    result_reference = r"(?:(?:that|the\s+result|el\s+resultado|o\s+resultado)\s*)?"
+
     patterns = [
         (
-            r"^(?:mais|adicione|adicionar|some|somar|add|plus)\s*(.+)$",
+            prefix
+            + r"(?:mais|adicione|adicionar|some|somar|add|plus)\s*"
+            + result_reference
+            + r"(.+)$",
             "+",
         ),
         (
-            r"^(?:menos|subtraia|subtrair|tire|tirar|subtract|minus)\s*(.+)$",
+            prefix + r"(?:menos|subtraia(?:\s+por)?|subtrair(?:\s+por)?"
+            r"|tire|tirar|subtract|minus)\s*" + result_reference + r"(.+)$",
             "-",
         ),
         (
-            r"^(?:vezes|multiplica(?:r)?\s*por|multiplique\s*por"
-            r"|multiply(?:\s+by)?|times)\s*(.+)$",
+            prefix + r"(?:vezes|multiplica(?:r)?\s*por|multiplique\s*por"
+            r"|multiply(?:\s+(?:that|the\s+result))?(?:\s+by)?|times)\s*" + r"(.+)$",
             "*",
         ),
         (
-            r"^(?:dividido\s*por|divide(?:\s*por)?|divida(?:\s*por)?"
-            r"|divide(?:\s+by)?|divided\s+by)\s*(.+)$",
+            prefix + r"(?:dividido\s*por|divide(?:\s+(?:that|the\s+result))?"
+            r"(?:\s*por|\s*by)?|divida(?:\s*por)?"
+            r"|divided\s+by)\s*" + r"(.+)$",
             "/",
         ),
         (
-            r"^(?:suma|sumar)\s*(.+)$",
+            prefix + r"(?:suma|sumar)\s*(.+)$",
             "+",
         ),
         (
-            r"^(?:resta|restar)\s*(.+)$",
+            prefix + r"(?:resta|restar)\s*(.+)$",
             "-",
         ),
         (
-            r"^(?:multiplica(?:\s+por)?|multiplicar\s+por)\s*(.+)$",
+            prefix
+            + r"(?:multiplica(?:\s+por)?|multiplicar\s+por)\s*"
+            + result_reference
+            + r"(.+)$",
             "*",
         ),
         (
-            r"^(?:divide(?:\s+por)?|dividir\s+por)\s*(.+)$",
+            prefix + r"(?:divide(?:\s+(?:that|the\s+result|el\s+resultado|"
+            r"o\s+resultado))?(?:\s+por|\s+by)?|dividir\s+por)\s*" + r"(.+)$",
             "/",
         ),
     ]

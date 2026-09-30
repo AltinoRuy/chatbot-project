@@ -1,5 +1,6 @@
 from agents.math_agent import process_math_message
 from agents.writer_agent import write_response
+from core.tools import DivisionByZeroError
 from services.memory import Memory
 
 
@@ -18,6 +19,11 @@ def process_message(
     """
     try:
         math_result = process_math_message(message, memory)
+    except DivisionByZeroError as error:
+        return write_response(
+            message,
+            error=str(error),
+        )
     except ValueError as error:
         return str(error)
 
