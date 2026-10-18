@@ -30,4 +30,5 @@ def test_generate_returns_ollama_response() -> None:
                 "content": "Hello",
             }
         ],
+        keep_alive="30m",
     )

@@ -10,10 +10,6 @@ NUMBER_WORDS = {
     "duas": "2",
     "tres": "3",
     "três": "3",
-    "trÃªs": "3",
-    "trãªs": "3",
-    "trÃƒÂªs": "3",
-    "trãƒâªs": "3",
     "quatro": "4",
     "cuatro": "4",
     "cinco": "5",
@@ -36,7 +32,6 @@ NUMBER_WORDS = {
     "twenty": "20",
 }
 
-
 OPERATOR_WORDS = {
     "dividido por": "/",
     "divided by": "/",
@@ -46,10 +41,6 @@ OPERATOR_WORDS = {
     "multiplied by": "*",
     "vezes": "*",
     "times": "*",
-    "mÃƒÂ¡s": "+",
-    "mÃ¡s": "+",
-    "mãƒâ¡s": "+",
-    "mã¡s": "+",
     "más": "+",
     "mas": "+",
     "mais": "+",
@@ -63,7 +54,7 @@ OPERATOR_WORDS = {
 
 
 def normalize_expression(message: str) -> str:
-    """Normalizes mathematical words and symbols.
+    """Normalize mathematical words and symbols.
 
     The normalization supports common mathematical vocabulary in Portuguese,
     English, and Spanish.
@@ -75,8 +66,7 @@ def normalize_expression(message: str) -> str:
         A normalized message containing mathematical symbols.
     """
     expression = message.lower().strip()
-
-    expression = re.sub(r"(\d),(\d)", r"\1.\2", expression)
+    expression = re.sub(r"(\d)\s*,\s*(\d)", r"\1.\2", expression)
 
     for text, symbol in sorted(
         OPERATOR_WORDS.items(),
@@ -106,7 +96,7 @@ def normalize_expression(message: str) -> str:
 
 
 def _is_valid_candidate(candidate: str) -> bool:
-    """Validates the syntax of a mathematical expression candidate.
+    """Validate the syntax of a mathematical expression candidate.
 
     Args:
         candidate: Candidate mathematical expression.
@@ -203,7 +193,7 @@ def _is_valid_candidate(candidate: str) -> bool:
 
 
 def _extract_candidate(expression: str) -> str | None:
-    """Extracts a complete mathematical expression from normalized text.
+    """Extract a complete mathematical expression from normalized text.
 
     Args:
         expression: Normalized expression candidate.
@@ -236,7 +226,7 @@ def _extract_candidate(expression: str) -> str | None:
 
 
 def _contains_operation(expression: str) -> bool:
-    """Checks whether an expression contains a mathematical operation.
+    """Check whether an expression contains a mathematical operation.
 
     Args:
         expression: Mathematical expression.
@@ -248,7 +238,7 @@ def _contains_operation(expression: str) -> bool:
 
 
 def extract_expression(message: str) -> str | None:
-    """Extracts a complete mathematical expression from a message.
+    """Extract a complete mathematical expression from a message.
 
     Contextual mathematical operations are excluded so they can be handled
     by the intent parser using the previous mathematical result.
@@ -271,7 +261,7 @@ def extract_expression(message: str) -> str | None:
 
 
 def is_context_operation(message: str) -> bool:
-    """Checks whether a message represents a contextual operation.
+    """Check whether a message represents a contextual operation.
 
     Contextual operations use the previous result as the first operand.
 
@@ -283,7 +273,6 @@ def is_context_operation(message: str) -> bool:
     """
     expression = normalize_expression(message)
     number = r"-?\d+(?:\.\d+)?"
-
     pattern = rf"^[+\-*/]{number}$"
 
     if re.fullmatch(pattern, expression):
@@ -293,7 +282,7 @@ def is_context_operation(message: str) -> bool:
 
 
 def _has_math_operator(expression: str) -> bool:
-    """Checks whether an expression contains a mathematical operator.
+    """Check whether a mathematical operator is present.
 
     Args:
         expression: Normalized expression to inspect.
@@ -305,7 +294,7 @@ def _has_math_operator(expression: str) -> bool:
 
 
 def _looks_like_math_expression(expression: str) -> bool:
-    """Checks whether text has the structure of a mathematical expression.
+    """Check whether text resembles a malformed mathematical expression.
 
     A mathematical expression is considered malformed when an operator
     separates two non-empty operands.
@@ -325,7 +314,7 @@ def _looks_like_math_expression(expression: str) -> bool:
 
 
 def is_invalid_mathematical_expression(message: str) -> bool:
-    """Checks whether a message is a malformed mathematical expression.
+    """Check whether a message is a malformed mathematical expression.
 
     Args:
         message: User message to inspect.

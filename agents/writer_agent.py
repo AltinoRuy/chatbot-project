@@ -139,6 +139,8 @@ def write_response(
         return response
 
     if error is not None:
+        localized_error = _localize_error(message, error)
+
         prompt = _build_prompt(
             message,
             language,
@@ -147,16 +149,16 @@ def write_response(
                 "Explain the error naturally without changing its meaning. "
                 "Do not calculate anything or introduce additional numbers. "
                 "The sentence MUST contain the exact placeholder {{ERROR}}. "
-                f"The authoritative error is: {error}"
+                f"The authoritative error is: {localized_error}"
             ),
         )
 
         response = _normalize_response(provider.generate(prompt))
 
         if not _is_valid_error_response(response):
-            return _fallback_error(message, error)
+            return _fallback_error(message, localized_error)
 
-        return response.replace("{{ERROR}}", error)
+        return response.replace("{{ERROR}}", localized_error)
 
     if result is not None:
         formatted_result = _format_result(result)
@@ -311,6 +313,20 @@ def _format_result(result: float) -> str:
         return str(int(numeric_result))
 
     return str(numeric_result)
+
+
+def _localize_error(message: str, error: str) -> str:
+    """Translate known application errors into the user's language."""
+    normalized_error = error.casefold()
+
+    is_division_by_zero = "zero" in normalized_error and (
+        "divid" in normalized_error or "division" in normalized_error
+    )
+
+    if is_division_by_zero and _is_portuguese(message):
+        return "Não é possível dividir por zero"
+
+    return error
 
 
 def _fallback_result(message: str, formatted_result: str) -> str:

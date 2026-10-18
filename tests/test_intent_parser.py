@@ -67,6 +67,12 @@ def test_parse_number_word() -> None:
     assert result == ("+", 5.0)
 
 
+def test_parse_accented_number_word() -> None:
+    result = parse_intent("mais três")
+
+    assert result == ("+", 3.0)
+
+
 def test_parse_subtraction_with_number_word() -> None:
     result = parse_intent("menos cinco")
 

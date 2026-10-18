@@ -2,6 +2,7 @@
     extract_expression,
     is_context_operation,
     is_invalid_mathematical_expression,
+    normalize_expression,
 )
 
 
@@ -17,6 +18,14 @@ def test_extract_decimal_expression() -> None:
     assert extract_expression("5.5 * 2") == "5.5*2"
 
 
+def test_extract_decimal_expression_with_comma() -> None:
+    assert extract_expression("0,5 + 1,5") == "0.5+1.5"
+
+
+def test_extract_decimal_expression_with_spaces_around_comma() -> None:
+    assert extract_expression("0, 5 + 1, 5") == "0.5+1.5"
+
+
 def test_extract_negative_expression() -> None:
     assert extract_expression("-5 + 2") == "-5+2"
 
@@ -25,12 +34,20 @@ def test_extract_number_words_portuguese() -> None:
     assert extract_expression("cinco mais quatro") == "5+4"
 
 
+def test_extract_accented_number_words_portuguese() -> None:
+    assert extract_expression("três mais dois") == "3+2"
+
+
 def test_extract_number_words_english() -> None:
     assert extract_expression("five plus four") == "5+4"
 
 
 def test_extract_number_words_spanish() -> None:
     assert extract_expression("cinco más cuatro") == "5+4"
+
+
+def test_normalize_accented_operator_words() -> None:
+    assert normalize_expression("cinco más cuatro") == "5+4"
 
 
 def test_extract_expression_inside_portuguese_sentence() -> None:

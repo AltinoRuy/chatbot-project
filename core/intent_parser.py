@@ -8,8 +8,6 @@ NUMBER_WORDS = {
     "duas": 2,
     "tres": 3,
     "três": 3,
-    "trãªs": 3,
-    "trãƒâªs": 3,
     "quatro": 4,
     "cinco": 5,
     "seis": 6,
@@ -21,7 +19,7 @@ NUMBER_WORDS = {
 
 
 def _parse_number(value: str) -> float | None:
-    """Parses a numeric value or a supported number word.
+    """Parse a numeric value or a supported number word.
 
     Args:
         value: Value to parse.
@@ -41,7 +39,7 @@ def _parse_number(value: str) -> float | None:
 
 
 def parse_intent(message: str) -> tuple[str, float] | None:
-    """Parses a contextual mathematical intent.
+    """Parse a contextual mathematical intent.
 
     Mathematical intent is detected using deterministic patterns only.
     Unrecognized messages return None instead of being interpreted by a

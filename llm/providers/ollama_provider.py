@@ -18,7 +18,7 @@ class OllamaProvider(BaseProvider):
         """Generates a response from the Ollama model.
 
         Args:
-            prompt: Input prompt sent to the Ollama model.
+            prompt: Input prompt sent to the Ollama provider.
 
         Returns:
             Generated text response.
@@ -31,6 +31,7 @@ class OllamaProvider(BaseProvider):
                     "content": prompt,
                 }
             ],
+            keep_alive="30m",
         )
 
         return response.message.content

@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from agents.math_agent import MathResult
 from core.tools import DivisionByZeroError
@@ -38,6 +38,7 @@ def test_process_message_without_previous_context() -> None:
             return_value=MathResult(
                 handled=True,
                 result=None,
+                needs_context=True,
             ),
         ) as mock_process_math,
         patch(
@@ -52,6 +53,7 @@ def test_process_message_without_previous_context() -> None:
     mock_write_response.assert_called_once_with(
         "divide 2",
         None,
+        True,
     )
 
 
@@ -139,7 +141,9 @@ def test_process_message_with_math_error() -> None:
     with (
         patch(
             "services.orchestrator.process_math_message",
-            side_effect=ValueError("Invalid mathematical expression."),
+            side_effect=ValueError(
+                "Invalid mathematical expression.",
+            ),
         ) as mock_process_math,
         patch(
             "services.orchestrator.write_response",
@@ -155,15 +159,13 @@ def test_process_message_with_math_error() -> None:
 def test_process_message_with_english_expression() -> None:
     memory = Memory()
 
-    math_result = MathResult(
-        handled=True,
-        result=9.0,
-    )
-
     with (
         patch(
             "services.orchestrator.process_math_message",
-            return_value=math_result,
+            return_value=MathResult(
+                handled=True,
+                result=9.0,
+            ),
         ) as mock_process_math,
         patch(
             "services.orchestrator.write_response",
@@ -186,15 +188,13 @@ def test_process_message_with_english_expression() -> None:
 def test_process_message_with_spanish_expression() -> None:
     memory = Memory()
 
-    math_result = MathResult(
-        handled=True,
-        result=9.0,
-    )
-
     with (
         patch(
             "services.orchestrator.process_math_message",
-            return_value=math_result,
+            return_value=MathResult(
+                handled=True,
+                result=9.0,
+            ),
         ) as mock_process_math,
         patch(
             "services.orchestrator.write_response",
@@ -220,7 +220,9 @@ def test_process_message_with_invalid_word_expression() -> None:
     with (
         patch(
             "services.orchestrator.process_math_message",
-            side_effect=ValueError("Invalid mathematical expression."),
+            side_effect=ValueError(
+                "Invalid mathematical expression.",
+            ),
         ) as mock_process_math,
         patch(
             "services.orchestrator.write_response",
@@ -229,35 +231,39 @@ def test_process_message_with_invalid_word_expression() -> None:
         result = process_message("banana+banana", memory)
 
     assert result == "Invalid mathematical expression."
-    mock_process_math.assert_called_once_with("banana+banana", memory)
+    mock_process_math.assert_called_once_with(
+        "banana+banana",
+        memory,
+    )
     mock_write_response.assert_not_called()
 
 
-def test_process_message_with_ambiguous_math_request() -> None:
+def test_process_message_with_ambiguous_math_intent() -> None:
     memory = Memory()
 
     with (
         patch(
             "services.orchestrator.process_math_message",
             return_value=MathResult(
-                handled=True,
+                handled=False,
+                result=None,
                 needs_clarification=True,
             ),
         ) as mock_process_math,
         patch(
             "services.orchestrator.write_response",
-            return_value="Could you clarify the operation?",
+            return_value="Could you clarify your calculation?",
         ) as mock_write_response,
     ):
-        result = process_message("do something with 5 and 2", memory)
+        result = process_message("calculate something", memory)
 
-    assert result == "Could you clarify the operation?"
+    assert result == "Could you clarify your calculation?"
     mock_process_math.assert_called_once_with(
-        "do something with 5 and 2",
+        "calculate something",
         memory,
     )
     mock_write_response.assert_called_once_with(
-        "do something with 5 and 2",
+        "calculate something",
         response_type="ambiguous",
     )
 
@@ -269,23 +275,50 @@ def test_process_message_with_interpretation_failure() -> None:
         patch(
             "services.orchestrator.process_math_message",
             return_value=MathResult(
-                handled=True,
+                handled=False,
+                result=None,
                 interpretation_failed=True,
             ),
         ) as mock_process_math,
         patch(
             "services.orchestrator.write_response",
-            return_value="Please rephrase the mathematical request.",
+            return_value="Please rephrase your request.",
         ) as mock_write_response,
     ):
-        result = process_message("calculate something", memory)
+        result = process_message("some unclear request", memory)
 
-    assert result == "Please rephrase the mathematical request."
+    assert result == "Please rephrase your request."
     mock_process_math.assert_called_once_with(
-        "calculate something",
+        "some unclear request",
         memory,
     )
     mock_write_response.assert_called_once_with(
-        "calculate something",
+        "some unclear request",
         response_type="interpretation_failed",
     )
+
+
+def test_process_message_integrates_math_agent_memory_and_writer() -> None:
+    memory = Memory()
+
+    with patch(
+        "agents.writer_agent.get_provider",
+    ) as mock_writer_provider:
+        provider = Mock()
+        provider.generate.side_effect = [
+            "The result is {{RESULT}}.",
+            "The result is {{RESULT}}.",
+        ]
+        mock_writer_provider.return_value = provider
+
+        first_response = process_message("5 + 4", memory)
+
+        assert first_response == "The result is 9."
+        assert memory.get_last_result() == 9.0
+
+        second_response = process_message("divide 2", memory)
+
+        assert second_response == "The result is 4.5."
+        assert memory.get_last_result() == 4.5
+
+    assert provider.generate.call_count == 2
