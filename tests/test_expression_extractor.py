@@ -49,6 +49,15 @@ def test_extract_expression_with_large_number_word() -> None:
     assert extract_expression("vinte mais 7 menos três") == "20+7-3"
 
 
+def test_extract_expression_with_noise_and_emojis() -> None:
+    assert (
+        extract_expression(
+            "😂😂🔥 quanto é isso aqui mano: vinte mais 7 menos três kkkkk"
+        )
+        == "20+7-3"
+    )
+
+
 def test_extract_parenthesized_expression() -> None:
     assert extract_expression("((18 + 6) / 3) * 4 - 5") == "((18+6)/3)*4-5"
 

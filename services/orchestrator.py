@@ -8,7 +8,7 @@ def process_message(
     message: str,
     memory: Memory,
 ) -> str:
-    """Processes a user message through the chatbot workflow.
+    """Process a user message through the chatbot workflow.
 
     Args:
         message: User message to process.
@@ -26,6 +26,18 @@ def process_message(
         )
     except ValueError as error:
         return str(error)
+
+    if math_result.needs_clarification:
+        return write_response(
+            message,
+            response_type="ambiguous",
+        )
+
+    if math_result.interpretation_failed:
+        return write_response(
+            message,
+            response_type="interpretation_failed",
+        )
 
     if not math_result.handled:
         return write_response(message)

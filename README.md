@@ -601,9 +601,9 @@ python -m pytest --cov --cov-report=term-missing -q
 Current validated status:
 
 ```text
-121 passing tests
+181 passing tests
 
-91.70% code coverage
+91.80% code coverage
 
 80% minimum coverage threshold
 ```
@@ -651,7 +651,7 @@ The project enforces a minimum coverage of 80%.
 Current validated coverage:
 
 ```text
-91.70%
+91.80%
 ```
 
 ## Design Principles

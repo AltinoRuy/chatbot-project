@@ -201,15 +201,15 @@ def test_process_message_with_spanish_expression() -> None:
             return_value="El resultado es 9.",
         ) as mock_write_response,
     ):
-        result = process_message("Â¿CuÃ¡nto es 5 + 4?", memory)
+        result = process_message("¿Cuánto es 5 + 4?", memory)
 
     assert result == "El resultado es 9."
     mock_process_math.assert_called_once_with(
-        "Â¿CuÃ¡nto es 5 + 4?",
+        "¿Cuánto es 5 + 4?",
         memory,
     )
     mock_write_response.assert_called_once_with(
-        "Â¿CuÃ¡nto es 5 + 4?",
+        "¿Cuánto es 5 + 4?",
         9.0,
     )
 
@@ -231,3 +231,61 @@ def test_process_message_with_invalid_word_expression() -> None:
     assert result == "Invalid mathematical expression."
     mock_process_math.assert_called_once_with("banana+banana", memory)
     mock_write_response.assert_not_called()
+
+
+def test_process_message_with_ambiguous_math_request() -> None:
+    memory = Memory()
+
+    with (
+        patch(
+            "services.orchestrator.process_math_message",
+            return_value=MathResult(
+                handled=True,
+                needs_clarification=True,
+            ),
+        ) as mock_process_math,
+        patch(
+            "services.orchestrator.write_response",
+            return_value="Could you clarify the operation?",
+        ) as mock_write_response,
+    ):
+        result = process_message("do something with 5 and 2", memory)
+
+    assert result == "Could you clarify the operation?"
+    mock_process_math.assert_called_once_with(
+        "do something with 5 and 2",
+        memory,
+    )
+    mock_write_response.assert_called_once_with(
+        "do something with 5 and 2",
+        response_type="ambiguous",
+    )
+
+
+def test_process_message_with_interpretation_failure() -> None:
+    memory = Memory()
+
+    with (
+        patch(
+            "services.orchestrator.process_math_message",
+            return_value=MathResult(
+                handled=True,
+                interpretation_failed=True,
+            ),
+        ) as mock_process_math,
+        patch(
+            "services.orchestrator.write_response",
+            return_value="Please rephrase the mathematical request.",
+        ) as mock_write_response,
+    ):
+        result = process_message("calculate something", memory)
+
+    assert result == "Please rephrase the mathematical request."
+    mock_process_math.assert_called_once_with(
+        "calculate something",
+        memory,
+    )
+    mock_write_response.assert_called_once_with(
+        "calculate something",
+        response_type="interpretation_failed",
+    )
