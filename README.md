@@ -191,7 +191,7 @@ The Math Agent has an explicit agent prompt that defines its responsibilities an
 * The Math Agent must not generate the final conversational response.
 * The Math Agent must return structured mathematical results to the orchestrator.
 
-The Math Agent prompt is used as an explicit agent contract. Mathematical execution remains deterministic and does not depend on an LLM.
+The prompt defines the Math Agent contract and its guardrails. The agent can use an LLM as an interpretation fallback. Structured responses are validated before execution, and mathematical calculations are always performed by deterministic application tools.
 
 ### Writer Agent
 
@@ -275,7 +275,7 @@ Division by zero and unsupported operations are handled by the mathematical tool
 
 ## Mathematical Parsing
 
-The application uses deterministic parsing components instead of delegating mathematical interpretation to the language model.
+The application prioritizes deterministic parsing for supported mathematical expressions and contextual operations. When deterministic interpretation is insufficient, the Math Agent may use an LLM to interpret the request. For expression interpretations, the agent validates the expression structure and checks whether it is grounded in the user message before execution. All mathematical calculations are performed by application tools.
 
 ### Expression Extractor
 
@@ -501,9 +501,11 @@ The project intentionally does not use:
 
 Before running the application, make sure the following are installed:
 
-* Python 3.10+
+* Python 3.14.4 (validated; other versions have not been verified)
 * Ollama
 * Git
+
+Install the Ollama application separately from [the official download page](https://ollama.com/download). The `ollama` entry in `requirements.txt` is the Python client library; it does not install the Ollama application.
 
 The project also requires the Ollama model:
 
@@ -528,7 +530,7 @@ The exact Vulkan device index may vary depending on the GPUs detected by the sys
 Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/AltinoRuy/chatbot-project.git
 cd chatbot-project
 ```
 
@@ -629,19 +631,19 @@ The minimum required coverage is enforced through `pyproject.toml`.
 ### Black
 
 ```bash
-black --check .
+python -m black --check .
 ```
 
 ### Isort
 
 ```bash
-isort --check-only .
+python -m isort --check-only .
 ```
 
 ### Flake8
 
 ```bash
-flake8 .
+python -m flake8 . --extend-ignore=E203
 ```
 
 ### Coverage
