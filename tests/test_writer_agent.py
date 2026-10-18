@@ -1,5 +1,7 @@
 from unittest.mock import Mock, patch
 
+import pytest
+
 from agents.writer_agent import write_response
 
 
@@ -292,3 +294,147 @@ def test_write_response_detects_portuguese_greeting() -> None:
         result = write_response("Bom dia, tudo bem?")
 
     assert result == "Olá! Como posso ajudar?"
+
+
+@pytest.mark.parametrize("provider_response", [None, 42, ["unexpected"]])
+def test_write_response_uses_fallback_for_non_string_result_response(
+    provider_response: object,
+) -> None:
+    provider = Mock()
+    provider.generate.return_value = provider_response
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        result = write_response("5 + 4", 9.0)
+
+    assert result == "The result is 9."
+
+
+@pytest.mark.parametrize("provider_response", [None, 42, ["unexpected"]])
+def test_write_response_uses_fallback_for_non_string_error_response(
+    provider_response: object,
+) -> None:
+    provider = Mock()
+    provider.generate.return_value = provider_response
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        result = write_response(
+            "10 / 0",
+            error="Cannot divide by zero",
+        )
+
+    assert result == "It is not possible to divide by zero."
+
+
+@pytest.mark.parametrize("provider_response", [None, 42, ["unexpected"]])
+def test_write_response_uses_fallback_for_non_string_context_response(
+    provider_response: object,
+) -> None:
+    provider = Mock()
+    provider.generate.return_value = provider_response
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        result = write_response("divide 2", needs_context=True)
+
+    assert result == "There is no previous mathematical result to use."
+
+
+@pytest.mark.parametrize("provider_response", [None, 42, ["unexpected"]])
+def test_write_response_uses_fallback_for_non_string_ambiguous_response(
+    provider_response: object,
+) -> None:
+    provider = Mock()
+    provider.generate.return_value = provider_response
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        result = write_response(
+            "calculate something",
+            response_type="ambiguous",
+        )
+
+    assert result == "Could you clarify what you want to calculate?"
+
+
+def test_write_response_uses_portuguese_result_fallback() -> None:
+    provider = Mock()
+    provider.generate.return_value = "Resultado inválido 123."
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        result = write_response("quanto é 5 + 4", 9.0)
+
+    assert result == "O resultado é 9."
+
+
+def test_write_response_uses_portuguese_generic_error_fallback() -> None:
+    provider = Mock()
+    provider.generate.return_value = "Resposta inválida 123."
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        result = write_response(
+            "calcular uma expressão",
+            error="Invalid expression",
+        )
+
+    assert result == "Não foi possível concluir a operação: Invalid expression."
+
+
+def test_write_response_uses_english_generic_error_fallback() -> None:
+    provider = Mock()
+    provider.generate.return_value = "Invalid response 123."
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        result = write_response(
+            "calculate an expression",
+            error="Invalid expression",
+        )
+
+    assert result == (
+        "It was not possible to complete the operation: Invalid expression."
+    )
+
+
+def test_write_response_uses_portuguese_ambiguous_fallback() -> None:
+    provider = Mock()
+    provider.generate.return_value = "Você quer 2 ou 3?"
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        result = write_response(
+            "poderia calcular isso",
+            response_type="ambiguous",
+        )
+
+    assert result == "Poderia esclarecer o que deseja calcular?"
+
+
+def test_write_response_uses_portuguese_interpretation_failure_fallback() -> None:
+    provider = Mock()
+    provider.generate.return_value = "Tente calcular 10 / 2."
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        result = write_response(
+            "poderia calcular isso",
+            response_type="interpretation_failed",
+        )
+
+    assert result == "Poderia reformular seu pedido matemático?"
+
+
+def test_write_response_uses_portuguese_non_math_fallback() -> None:
+    provider = Mock()
+    provider.generate.return_value = "A resposta é 42."
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        result = write_response("Olá, tudo bem?")
+
+    assert result == "Posso ajudar com isso, mas não vou realizar cálculos."
+
+
+def test_writer_uses_portuguese_when_language_markers_are_tied() -> None:
+    provider = Mock()
+    provider.generate.return_value = "Olá!"
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        result = write_response("hello olá")
+
+    assert result == "Olá!"
+    prompt = provider.generate.call_args.args[0]
+    assert "Respond only in Portuguese." in prompt
