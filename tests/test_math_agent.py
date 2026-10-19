@@ -5,12 +5,16 @@ import pytest
 
 from agents.math_agent import (
     MathResult,
+    _ExpressionParser,
     _contextual_operation_is_grounded,
     _expression_is_grounded,
+    _process_llm_interpretation,
     calculate,
+    evaluate_tokens,
     process_math_message,
     solve,
     solve_with_context,
+    tokenize,
 )
 from core.tools import DivisionByZeroError
 from services.memory import Memory
@@ -509,3 +513,282 @@ def test_contextual_operation_grounding_rejects_multiple_operands() -> None:
         )
         is False
     )
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "5++",
+        "abc",
+        "5",
+    ],
+)
+def test_llm_rejects_invalid_or_incomplete_expressions(
+    expression: str,
+) -> None:
+    memory = Memory()
+    memory.save_result(9.0)
+
+    provider = Mock()
+    provider.generate.return_value = json.dumps(
+        {
+            "intent": "expression",
+            "expression": expression,
+        }
+    )
+
+    with (
+        patch(
+            "agents.math_agent.extract_expression",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.is_invalid_mathematical_expression",
+            return_value=False,
+        ),
+        patch(
+            "agents.math_agent.parse_intent",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.get_provider",
+            return_value=provider,
+        ),
+    ):
+        result = process_math_message(
+            "Quanto é 5 + 4?",
+            memory,
+        )
+
+    assert result.handled is True
+    assert result.interpretation_failed is True
+    assert memory.get_last_result() == 9.0
+
+
+@pytest.mark.parametrize(
+    "operand",
+    [
+        float("inf"),
+        float("-inf"),
+        float("nan"),
+    ],
+)
+def test_llm_rejects_non_finite_contextual_operands(
+    operand: float,
+) -> None:
+    memory = Memory()
+    memory.save_result(9.0)
+
+    provider = Mock()
+    provider.generate.return_value = json.dumps(
+        {
+            "intent": "contextual_operation",
+            "operator": "/",
+            "operand": operand,
+        }
+    )
+
+    with (
+        patch(
+            "agents.math_agent.extract_expression",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.is_invalid_mathematical_expression",
+            return_value=False,
+        ),
+        patch(
+            "agents.math_agent.parse_intent",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.get_provider",
+            return_value=provider,
+        ),
+    ):
+        result = process_math_message(
+            "Take the previous result and divide by two",
+            memory,
+        )
+
+    assert result.handled is True
+    assert result.interpretation_failed is True
+    assert memory.get_last_result() == 9.0
+
+
+def test_llm_rejects_expression_not_grounded_in_message() -> None:
+    memory = Memory()
+    memory.save_result(9.0)
+
+    provider = Mock()
+    provider.generate.return_value = json.dumps(
+        {
+            "intent": "expression",
+            "expression": "5+7",
+        }
+    )
+
+    with (
+        patch(
+            "agents.math_agent.extract_expression",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.is_invalid_mathematical_expression",
+            return_value=False,
+        ),
+        patch(
+            "agents.math_agent.parse_intent",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.get_provider",
+            return_value=provider,
+        ),
+    ):
+        result = process_math_message(
+            "Quanto é 5 + 4?",
+            memory,
+        )
+
+    assert result.handled is True
+    assert result.interpretation_failed is True
+    assert memory.get_last_result() == 9.0
+
+
+def test_expression_grounding_rejects_invalid_expression() -> None:
+    assert _expression_is_grounded("5++", "Quanto é 5 + 4?") is False
+
+
+def test_expression_grounding_rejects_multiple_candidates() -> None:
+    assert (
+        _expression_is_grounded(
+            "5+4",
+            "Calcule 5 + 4 e também 2 * 3",
+        )
+        is False
+    )
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "-",
+        "-.",
+        "(-)",
+        "(-.)",
+        "-1..2",
+    ],
+)
+def test_tokenize_rejects_malformed_negative_numbers(
+    expression: str,
+) -> None:
+    with pytest.raises(ValueError, match="Invalid mathematical expression"):
+        tokenize(expression)
+
+
+@pytest.mark.parametrize(
+    "tokens",
+    [
+        [],
+        ["1", "+"],
+        ["("],
+        ["1", "2"],
+    ],
+)
+def test_evaluate_tokens_rejects_invalid_token_sequences(
+    tokens: list[str],
+) -> None:
+    with pytest.raises(ValueError, match="Invalid mathematical expression"):
+        evaluate_tokens(tokens)
+
+
+def test_expression_parser_rejects_non_numeric_token() -> None:
+    parser = _ExpressionParser(["not-a-number"])
+
+    with pytest.raises(ValueError, match="Invalid mathematical expression"):
+        parser.parse()
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "1..2+3",
+        "1+.",
+        "1+-.",
+    ],
+)
+def test_expression_grounding_rejects_malformed_expressions(
+    expression: str,
+) -> None:
+    assert _expression_is_grounded(expression, f"Calculate {expression}") is False
+
+
+def test_expression_grounding_rejects_message_without_candidates() -> None:
+    assert _expression_is_grounded("5+4", "What is the answer?") is False
+
+
+def test_expression_grounding_rejects_malformed_message_candidate() -> None:
+    assert _expression_is_grounded("5+4", "Calculate 1..2 + 3") is False
+
+
+def test_llm_rejects_contextual_operand_that_cannot_be_grounded() -> None:
+    memory = Memory()
+    memory.save_result(9.0)
+
+    provider = Mock()
+    provider.generate.return_value = json.dumps(
+        {
+            "intent": "contextual_operation",
+            "operator": "/",
+            "operand": 2,
+        }
+    )
+
+    with (
+        patch(
+            "agents.math_agent.extract_expression",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.is_invalid_mathematical_expression",
+            return_value=False,
+        ),
+        patch(
+            "agents.math_agent.parse_intent",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.get_provider",
+            return_value=provider,
+        ),
+    ):
+        result = process_math_message(
+            "Take the previous result and divide by two and three",
+            memory,
+        )
+
+    assert result.handled is True
+    assert result.interpretation_failed is True
+    assert memory.get_last_result() == 9.0
+
+
+def test_process_unknown_validated_intent_fails_closed() -> None:
+    memory = Memory()
+    memory.save_result(9.0)
+
+    result = _process_llm_interpretation(
+        {"intent": "unexpected_intent"},
+        memory,
+    )
+
+    assert result == MathResult(
+        handled=True,
+        interpretation_failed=True,
+    )
+    assert memory.get_last_result() == 9.0
+
+
+def test_expression_parser_rejects_empty_tokens_directly() -> None:
+    with pytest.raises(ValueError, match="Invalid mathematical expression"):
+        _ExpressionParser([]).parse()
