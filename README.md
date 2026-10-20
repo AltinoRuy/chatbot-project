@@ -1,4 +1,4 @@
-﻿# AI Chatbot
+# AI Chatbot
 
 A local AI chatbot built with Python, Streamlit, and Ollama. The project demonstrates agent orchestration, tool usage, context management, memory, prompt engineering, guardrails, and LLM provider abstraction without relying on agent frameworks such as LangChain or CrewAI.
 
@@ -643,9 +643,9 @@ python -m pytest --cov --cov-report=term-missing -q
 Current validated status:
 
 ```text
-187 passing tests
+259 passing tests
 
-92.07% code coverage
+94.07% code coverage
 
 80% minimum coverage threshold
 ```
@@ -690,7 +690,7 @@ The project enforces a minimum coverage of 80%.
 Current validated coverage:
 
 ```text
-92.07%
+94.07%
 ```
 
 ## Design Principles

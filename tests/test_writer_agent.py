@@ -98,7 +98,7 @@ def test_write_response_uses_fallback_when_response_has_extra_numbers() -> None:
     assert result == "The result is 9."
 
 
-def test_write_response_handles_error_response() -> None:
+def test_write_response_handles_known_error_deterministically() -> None:
     provider = Mock()
     provider.generate.return_value = (
         "It is not possible to complete the operation: {{ERROR}}."
@@ -110,26 +110,21 @@ def test_write_response_handles_error_response() -> None:
             error="Cannot divide by zero",
         )
 
-    assert result == (
-        "It is not possible to complete the operation: " "Cannot divide by zero."
-    )
+    assert result == "It is not possible to divide by zero."
+    provider.generate.assert_not_called()
 
 
-def test_writer_sends_authoritative_error_to_provider() -> None:
+def test_writer_does_not_send_known_error_to_provider() -> None:
     provider = Mock()
-    provider.generate.return_value = (
-        "It is not possible to complete the operation: {{ERROR}}."
-    )
 
     with patch("agents.writer_agent.get_provider", return_value=provider):
-        write_response("10 / 0", error="Cannot divide by zero")
+        result = write_response("10 / 0", error="Cannot divide by zero")
 
-    prompt = provider.generate.call_args.args[0]
+    assert result == "It is not possible to divide by zero."
+    provider.generate.assert_not_called()
 
-    assert "The authoritative error is: Cannot divide by zero" in prompt
 
-
-def test_write_response_falls_back_for_invalid_error_response() -> None:
+def test_write_response_uses_deterministic_response_for_known_error() -> None:
     provider = Mock()
     provider.generate.return_value = "The answer is 10."
 
@@ -140,6 +135,7 @@ def test_write_response_falls_back_for_invalid_error_response() -> None:
         )
 
     assert result == "It is not possible to divide by zero."
+    provider.generate.assert_not_called()
 
 
 def test_write_response_handles_context_requirement() -> None:
@@ -230,7 +226,7 @@ def test_write_response_handles_interpretation_failure() -> None:
             response_type="interpretation_failed",
         )
 
-    assert result == ("I could not confidently interpret the mathematical expression.")
+    assert result == "I could not confidently interpret the mathematical expression."
 
 
 def test_interpretation_failure_falls_back_when_response_has_numbers() -> None:
@@ -310,7 +306,7 @@ def test_write_response_uses_fallback_for_non_string_result_response(
 
 
 @pytest.mark.parametrize("provider_response", [None, 42, ["unexpected"]])
-def test_write_response_uses_fallback_for_non_string_error_response(
+def test_write_response_uses_fallback_for_non_string_generic_error_response(
     provider_response: object,
 ) -> None:
     provider = Mock()
@@ -318,11 +314,14 @@ def test_write_response_uses_fallback_for_non_string_error_response(
 
     with patch("agents.writer_agent.get_provider", return_value=provider):
         result = write_response(
-            "10 / 0",
-            error="Cannot divide by zero",
+            "calculate an expression",
+            error="Invalid expression",
         )
 
-    assert result == "It is not possible to divide by zero."
+    assert (
+        result == "It was not possible to complete the operation: Invalid expression."
+    )
+    provider.generate.assert_called_once()
 
 
 @pytest.mark.parametrize("provider_response", [None, 42, ["unexpected"]])
@@ -374,7 +373,7 @@ def test_write_response_uses_portuguese_generic_error_fallback() -> None:
             error="Invalid expression",
         )
 
-    assert result == "Não foi possível concluir a operação: Invalid expression."
+    assert result == ("Não foi possível concluir a operação: Invalid expression.")
 
 
 def test_write_response_uses_english_generic_error_fallback() -> None:
@@ -387,8 +386,8 @@ def test_write_response_uses_english_generic_error_fallback() -> None:
             error="Invalid expression",
         )
 
-    assert result == (
-        "It was not possible to complete the operation: Invalid expression."
+    assert (
+        result == "It was not possible to complete the operation: Invalid expression."
     )
 
 
@@ -438,3 +437,184 @@ def test_writer_uses_portuguese_when_language_markers_are_tied() -> None:
     assert result == "Olá!"
     prompt = provider.generate.call_args.args[0]
     assert "Respond only in Portuguese." in prompt
+
+
+@pytest.mark.parametrize(
+    (
+        "message",
+        "kwargs",
+        "expected",
+    ),
+    [
+        (
+            "5 + 4",
+            {"result": 9.0},
+            "The result is 9.",
+        ),
+        (
+            "10 / 0",
+            {"error": "Cannot divide by zero"},
+            "It is not possible to divide by zero.",
+        ),
+        (
+            "divide 2",
+            {"needs_context": True},
+            "There is no previous mathematical result to use.",
+        ),
+        (
+            "calculate something",
+            {"response_type": "ambiguous"},
+            "Could you clarify what you want to calculate?",
+        ),
+        (
+            "calculate something",
+            {"response_type": "interpretation_failed"},
+            "Could you rephrase your mathematical request?",
+        ),
+        (
+            "Hello",
+            {},
+            "I can help with that, but I will not perform calculations.",
+        ),
+    ],
+)
+def test_write_response_uses_fallback_when_provider_raises_exception(
+    message: str,
+    kwargs: dict[str, object],
+    expected: str,
+) -> None:
+    provider = Mock()
+    provider.generate.side_effect = RuntimeError("Provider unavailable")
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        result = write_response(message, **kwargs)
+
+    assert result == expected
+
+    if kwargs.get("error") == "Cannot divide by zero":
+        provider.generate.assert_not_called()
+    else:
+        provider.generate.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("message", "kwargs", "expected"),
+    [
+        (
+            "5 + 4",
+            {"result": 9.0},
+            "The result is 9.",
+        ),
+        (
+            "divide 2",
+            {"needs_context": True},
+            "There is no previous mathematical result to use.",
+        ),
+        (
+            "calculate something",
+            {"response_type": "ambiguous"},
+            "Could you clarify what you want to calculate?",
+        ),
+        (
+            "calculate something",
+            {"response_type": "interpretation_failed"},
+            "Could you rephrase your mathematical request?",
+        ),
+        (
+            "Hello",
+            {},
+            "I can help with that, but I will not perform calculations.",
+        ),
+        (
+            "calculate an expression",
+            {"error": "Invalid expression"},
+            "It was not possible to complete the operation: Invalid expression.",
+        ),
+    ],
+)
+def test_write_response_uses_fallback_when_provider_initialization_fails(
+    message: str,
+    kwargs: dict[str, object],
+    expected: str,
+) -> None:
+    with patch(
+        "agents.writer_agent.get_provider",
+        side_effect=RuntimeError("Provider unavailable"),
+    ):
+        result = write_response(message, **kwargs)
+
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("message", "provider_response", "expected"),
+    [
+        (
+            "5 + 4",
+            "The result is nine, not {{RESULT}}.",
+            "The result is 9.",
+        ),
+        (
+            "5 + 4",
+            "The result is {{RESULT}}, or ten.",
+            "The result is 9.",
+        ),
+        (
+            "5 + 4",
+            "The result is {{RESULT}}, or twenty-five.",
+            "The result is 9.",
+        ),
+        (
+            "Quanto é 5 + 4?",
+            "O resultado é {{RESULT}}, ou dez.",
+            "O resultado é 9.",
+        ),
+        (
+            "Quanto é 5 + 4?",
+            "O resultado é {{RESULT}}, ou vinte e cinco.",
+            "O resultado é 9.",
+        ),
+    ],
+)
+def test_write_response_rejects_additional_numbers_written_as_words(
+    message: str,
+    provider_response: str,
+    expected: str,
+) -> None:
+    provider = Mock()
+    provider.generate.return_value = provider_response
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        result = write_response(message, 9.0)
+
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("message", "provider_response"),
+    [
+        (
+            "Quanto é 5 + 4?",
+            "O resultado é {{RESULT}}, uma informação importante.",
+        ),
+        (
+            "What is 5 + 4?",
+            "The result is {{RESULT}}, one important detail.",
+        ),
+    ],
+)
+def test_writer_does_not_treat_number_words_as_extra_results(
+    message: str,
+    provider_response: str,
+) -> None:
+    provider = Mock()
+    provider.generate.return_value = provider_response
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        result = write_response(message, 9.0)
+
+    assert result == (
+        "O resultado é 9, uma informação importante."
+        if message.startswith("Quanto")
+        else "The result is 9, one important detail."
+    )

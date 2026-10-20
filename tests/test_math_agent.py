@@ -5,9 +5,9 @@ import pytest
 
 from agents.math_agent import (
     MathResult,
-    _ExpressionParser,
     _contextual_operation_is_grounded,
     _expression_is_grounded,
+    _ExpressionParser,
     _process_llm_interpretation,
     calculate,
     evaluate_tokens,
@@ -51,6 +51,28 @@ def test_calculate_division_by_zero() -> None:
 
 
 @pytest.mark.parametrize(
+    ("left", "operator", "right"),
+    [
+        (1e308, "+", 1e308),
+        (1e308, "*", 1e308),
+        (float("inf"), "+", 1.0),
+        (float("-inf"), "-", 1.0),
+        (float("nan"), "+", 1.0),
+    ],
+)
+def test_calculate_rejects_non_finite_results(
+    left: float,
+    operator: str,
+    right: float,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="Mathematical result must be finite",
+    ):
+        calculate(left, operator, right)
+
+
+@pytest.mark.parametrize(
     ("expression", "expected"),
     [
         ("5+4", 9),
@@ -84,6 +106,16 @@ def test_solve_supported_expressions(
 )
 def test_solve_rejects_invalid_expressions(expression: str) -> None:
     with pytest.raises(ValueError):
+        solve(expression)
+
+
+def test_solve_rejects_overflowing_expression() -> None:
+    expression = f"{'9' * 400}+1"
+
+    with pytest.raises(
+        ValueError,
+        match="Mathematical result must be finite",
+    ):
         solve(expression)
 
 
@@ -138,6 +170,34 @@ def test_process_contextual_operation_uses_previous_result() -> None:
     assert result == MathResult(handled=True, result=4.5)
     assert memory.get_last_result() == 4.5
     mock_solve.assert_called_once_with(9.0, "/", 2.0)
+
+
+def test_process_contextual_operation_preserves_memory_on_overflow() -> None:
+    memory = Memory()
+    previous_result = 1e308
+    memory.save_result(previous_result)
+
+    with (
+        patch(
+            "agents.math_agent.extract_expression",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.is_invalid_mathematical_expression",
+            return_value=False,
+        ),
+        patch(
+            "agents.math_agent.parse_intent",
+            return_value=("*", 2.0),
+        ),
+    ):
+        with pytest.raises(
+            ValueError,
+            match="Mathematical result must be finite",
+        ):
+            process_math_message("multiply by two", memory)
+
+    assert memory.get_last_result() == previous_result
 
 
 def test_process_contextual_operation_without_previous_result() -> None:

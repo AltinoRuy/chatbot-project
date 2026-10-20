@@ -65,17 +65,35 @@ class MathResult:
 
 
 def calculate(left: float, operator: str, right: float) -> float:
-    """Execute a supported operation through the mathematical tools."""
-    if operator == "+":
-        return add(left, right)
-    if operator == "-":
-        return subtract(left, right)
-    if operator == "*":
-        return multiply(left, right)
-    if operator == "/":
-        return divide(left, right)
+    """Execute a supported operation and validate its result.
 
-    raise ValueError(f"Unsupported operator: {operator}")
+    Args:
+        left: First operand.
+        operator: Arithmetic operator.
+        right: Second operand.
+
+    Returns:
+        The finite result of the requested operation.
+
+    Raises:
+        ValueError: If the operator is unsupported or the result is not finite.
+        DivisionByZeroError: If division by zero is attempted.
+    """
+    if operator == "+":
+        result = add(left, right)
+    elif operator == "-":
+        result = subtract(left, right)
+    elif operator == "*":
+        result = multiply(left, right)
+    elif operator == "/":
+        result = divide(left, right)
+    else:
+        raise ValueError(f"Unsupported operator: {operator}")
+
+    if not math.isfinite(result):
+        raise ValueError("Mathematical result must be finite.")
+
+    return result
 
 
 def tokenize(expression: str) -> list[str]:

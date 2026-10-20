@@ -6,7 +6,7 @@ from services.memory import Memory
 from services.orchestrator import process_message
 
 
-def test_process_message_without_math() -> None:
+def test_process_message_with_general_message() -> None:
     memory = Memory()
 
     with (
@@ -14,19 +14,18 @@ def test_process_message_without_math() -> None:
             "services.orchestrator.process_math_message",
             return_value=MathResult(
                 handled=False,
-                result=None,
             ),
         ) as mock_process_math,
         patch(
             "services.orchestrator.write_response",
-            return_value="Hello!",
+            return_value="Hello! How can I help you?",
         ) as mock_write_response,
     ):
-        result = process_message("Hello", memory)
+        result = process_message("hello", memory)
 
-    assert result == "Hello!"
-    mock_process_math.assert_called_once_with("Hello", memory)
-    mock_write_response.assert_called_once_with("Hello")
+    assert result == "Hello! How can I help you?"
+    mock_process_math.assert_called_once_with("hello", memory)
+    mock_write_response.assert_called_once_with("hello")
 
 
 def test_process_message_without_previous_context() -> None:
@@ -137,35 +136,41 @@ def test_process_message_with_division_by_zero_error() -> None:
 
 def test_process_message_with_math_error() -> None:
     memory = Memory()
+    error_message = "Invalid mathematical expression."
+    expected_response = "Could you rephrase your mathematical expression?"
 
     with (
         patch(
             "services.orchestrator.process_math_message",
-            side_effect=ValueError(
-                "Invalid mathematical expression.",
-            ),
+            side_effect=ValueError(error_message),
         ) as mock_process_math,
         patch(
             "services.orchestrator.write_response",
+            return_value=expected_response,
         ) as mock_write_response,
     ):
         result = process_message("5++", memory)
 
-    assert result == "Invalid mathematical expression."
+    assert result == expected_response
     mock_process_math.assert_called_once_with("5++", memory)
-    mock_write_response.assert_not_called()
+    mock_write_response.assert_called_once_with(
+        "5++",
+        error=error_message,
+    )
 
 
 def test_process_message_with_english_expression() -> None:
     memory = Memory()
 
+    math_result = MathResult(
+        handled=True,
+        result=9.0,
+    )
+
     with (
         patch(
             "services.orchestrator.process_math_message",
-            return_value=MathResult(
-                handled=True,
-                result=9.0,
-            ),
+            return_value=math_result,
         ) as mock_process_math,
         patch(
             "services.orchestrator.write_response",
@@ -188,54 +193,62 @@ def test_process_message_with_english_expression() -> None:
 def test_process_message_with_spanish_expression() -> None:
     memory = Memory()
 
+    math_result = MathResult(
+        handled=True,
+        result=9.0,
+    )
+
+    message = "¿Cuánto es 5 + 4?"
+
     with (
         patch(
             "services.orchestrator.process_math_message",
-            return_value=MathResult(
-                handled=True,
-                result=9.0,
-            ),
+            return_value=math_result,
         ) as mock_process_math,
         patch(
             "services.orchestrator.write_response",
             return_value="El resultado es 9.",
         ) as mock_write_response,
     ):
-        result = process_message("¿Cuánto es 5 + 4?", memory)
+        result = process_message(message, memory)
 
     assert result == "El resultado es 9."
     mock_process_math.assert_called_once_with(
-        "¿Cuánto es 5 + 4?",
+        message,
         memory,
     )
     mock_write_response.assert_called_once_with(
-        "¿Cuánto es 5 + 4?",
+        message,
         9.0,
     )
 
 
 def test_process_message_with_invalid_word_expression() -> None:
     memory = Memory()
+    error_message = "Invalid mathematical expression."
+    expected_response = "Could you rephrase your mathematical expression?"
 
     with (
         patch(
             "services.orchestrator.process_math_message",
-            side_effect=ValueError(
-                "Invalid mathematical expression.",
-            ),
+            side_effect=ValueError(error_message),
         ) as mock_process_math,
         patch(
             "services.orchestrator.write_response",
+            return_value=expected_response,
         ) as mock_write_response,
     ):
         result = process_message("banana+banana", memory)
 
-    assert result == "Invalid mathematical expression."
+    assert result == expected_response
     mock_process_math.assert_called_once_with(
         "banana+banana",
         memory,
     )
-    mock_write_response.assert_not_called()
+    mock_write_response.assert_called_once_with(
+        "banana+banana",
+        error=error_message,
+    )
 
 
 def test_process_message_with_ambiguous_math_intent() -> None:
@@ -245,8 +258,7 @@ def test_process_message_with_ambiguous_math_intent() -> None:
         patch(
             "services.orchestrator.process_math_message",
             return_value=MathResult(
-                handled=False,
-                result=None,
+                handled=True,
                 needs_clarification=True,
             ),
         ) as mock_process_math,
@@ -275,8 +287,7 @@ def test_process_message_with_interpretation_failure() -> None:
         patch(
             "services.orchestrator.process_math_message",
             return_value=MathResult(
-                handled=False,
-                result=None,
+                handled=True,
                 interpretation_failed=True,
             ),
         ) as mock_process_math,

@@ -25,7 +25,10 @@ def process_message(
             error=str(error),
         )
     except ValueError as error:
-        return str(error)
+        return write_response(
+            message,
+            error=str(error),
+        )
 
     if math_result.needs_clarification:
         return write_response(
