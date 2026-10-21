@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from agents.writer_agent import write_response
+from agents.writer_agent import _detect_language, write_response
 
 
 def test_write_response_returns_provider_response() -> None:
@@ -651,3 +651,18 @@ def test_write_response_handles_provider_unavailable_deterministically(
 
     assert result == expected
     mock_get_provider.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "subtraia 2",
+        "multiplique por 3",
+        "divida por 0",
+    ],
+)
+def test_detect_language_identifies_short_portuguese_commands(
+    message: str,
+) -> None:
+    """Identify short Portuguese math commands as Portuguese."""
+    assert _detect_language(message) == "Portuguese"

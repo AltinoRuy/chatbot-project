@@ -47,6 +47,15 @@ PORTUGUESE_MARKERS = {
     "vocês",
 }
 
+# Strong Portuguese command forms take priority over shared words
+# such as "por", which can also occur in Spanish.
+PORTUGUESE_COMMAND_MARKERS = {
+    "adicione",
+    "divida",
+    "multiplique",
+    "subtraia",
+}
+
 ENGLISH_MARKERS = {
     "about",
     "and",
@@ -487,6 +496,11 @@ def _detect_language(message: str) -> str:
     """Detect Portuguese, English, or Spanish using lexical markers."""
     normalized_message = message.casefold()
     words = set(re.findall(r"\b\w+\b", normalized_message))
+
+    # These Portuguese command forms were misclassified because shared
+    # words such as "por" could outweigh the missing Portuguese verb marker.
+    if words & PORTUGUESE_COMMAND_MARKERS:
+        return "Portuguese"
 
     scores = {
         "Portuguese": len(words & PORTUGUESE_MARKERS),
