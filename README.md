@@ -225,7 +225,7 @@ Its responsibilities include:
 - Storing new results in memory
 - Returning a structured mathematical result
 
-The Math Agent is the only component responsible for mathematical interpretation and execution.
+The Math Agent is responsible for mathematical interpretation and for coordinating the execution of mathematical requests through deterministic application tools. The tools perform the calculations and provide the authoritative results.
 
 The Math Agent has an explicit agent prompt that defines its responsibilities and guardrails. The prompt establishes that:
 
@@ -640,12 +640,12 @@ Run the test suite with coverage:
 python -m pytest --cov --cov-report=term-missing -q
 ```
 
-Current validated status:
+Latest previously validated status:
 
 ```text
-270 passing tests
+273 passing tests
 
-94.39% code coverage
+94.41% code coverage
 
 80% minimum coverage threshold
 ```
@@ -687,11 +687,19 @@ python -m flake8 . --extend-ignore=E203
 
 The project enforces a minimum coverage of 80%.
 
-Current validated coverage:
+Latest previously validated coverage:
 
 ```text
-94.39%
+94.41%
 ```
+
+## Dependency Security Note
+
+The latest dependency audit identified eight known vulnerabilities in Pillow 12.3.0, a dependency constrained by the current Streamlit version. Pillow 13.0.0 was identified as a fixed version, but it falls outside Streamlit's current declared Pillow version constraint.
+
+The dependency conflict has not been resolved. Do not force-install an incompatible Pillow version or assume that the application is unaffected simply because it does not directly process uploaded images.
+
+Before using this project in a production environment, reassess the dependency tree, check for compatible upstream fixes, and rerun the dependency audit. This remains a known security limitation.
 
 ## Design Principles
 
@@ -701,7 +709,7 @@ Each component has a defined responsibility.
 
 The Orchestrator coordinates.
 
-The Math Agent interprets and executes mathematical requests.
+The Math Agent interprets mathematical requests and coordinates their execution through application tools.
 
 The mathematical tools perform calculations.
 
