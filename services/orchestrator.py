@@ -42,6 +42,12 @@ def process_message(
             response_type="interpretation_failed",
         )
 
+    if math_result.provider_unavailable:
+        return write_response(
+            message,
+            response_type="provider_unavailable",
+        )
+
     if not math_result.handled:
         return write_response(message)
 

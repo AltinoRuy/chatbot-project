@@ -618,3 +618,36 @@ def test_writer_does_not_treat_number_words_as_extra_results(
         if message.startswith("Quanto")
         else "The result is 9, one important detail."
     )
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        (
+            "O que é uma equação?",
+            "O serviço de IA está indisponível no momento. "
+            "Tente novamente mais tarde.",
+        ),
+        (
+            "What is an equation?",
+            "The AI service is currently unavailable. " "Please try again later.",
+        ),
+        (
+            "¿Qué es una ecuación?",
+            "El servicio de IA no está disponible en este momento. "
+            "Inténtalo de nuevo más tarde.",
+        ),
+    ],
+)
+def test_write_response_handles_provider_unavailable_deterministically(
+    message: str,
+    expected: str,
+) -> None:
+    with patch("agents.writer_agent.get_provider") as mock_get_provider:
+        result = write_response(
+            message,
+            response_type="provider_unavailable",
+        )
+
+    assert result == expected
+    mock_get_provider.assert_not_called()

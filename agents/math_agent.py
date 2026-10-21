@@ -53,8 +53,9 @@ class MathResult:
         result: Authoritative mathematical result, if available.
         needs_context: Whether a previous mathematical result is required.
         needs_clarification: Whether the user must clarify the request.
-        interpretation_failed: Whether LLM interpretation failed validation
-            or could not be completed.
+        interpretation_failed: Whether the LLM interpretation failed
+            validation or could not be trusted.
+        provider_unavailable: Whether the provider call raised an exception.
     """
 
     handled: bool
@@ -62,6 +63,7 @@ class MathResult:
     needs_context: bool = False
     needs_clarification: bool = False
     interpretation_failed: bool = False
+    provider_unavailable: bool = False
 
 
 def calculate(left: float, operator: str, right: float) -> float:
@@ -293,7 +295,7 @@ def _contextual_operation_is_grounded(
             r"\b(?:multiply|multiplication|multiplied|times|product|"
             r"vezes|multiplicar|multiplique)\b"
         ),
-        "/": (r"\b(?:divide|division|divided|dividir|divida|dividido|" r"divisão)\b"),
+        "/": (r"\b(?:divide|division|divided|dividir|divida|dividido|divisão)\b"),
     }
 
     detected_operations = []
@@ -409,16 +411,26 @@ def _interpret_with_llm(message: str) -> dict[str, Any]:
         f"User message: {json.dumps(message, ensure_ascii=True)}"
     )
 
+    # Provider initialization and generation failures are infrastructure errors.
     try:
         response = get_provider().generate(prompt)
-        interpretation = json.loads(response)
     except Exception:
+        return {"intent": "provider_unavailable"}
+
+    # A response was received, so parsing or validation failures are different.
+    try:
+        interpretation = json.loads(response)
+    except (json.JSONDecodeError, TypeError):
         return _failed_interpretation()
 
     if not isinstance(interpretation, dict):
         return _failed_interpretation()
 
     intent = interpretation.get("intent")
+
+    # Reject invalid field types before comparisons or set membership.
+    if not isinstance(intent, str):
+        return _failed_interpretation()
 
     if intent in {"not_math", "ambiguous"}:
         return {"intent": intent}
@@ -445,7 +457,12 @@ def _interpret_with_llm(message: str) -> dict[str, Any]:
         operator = interpretation.get("operator")
         operand = interpretation.get("operand")
 
-        if operator not in {"+", "-", "*", "/"}:
+        if not isinstance(operator, str) or operator not in {
+            "+",
+            "-",
+            "*",
+            "/",
+        }:
             return _failed_interpretation()
 
         if isinstance(operand, bool) or not isinstance(operand, (int, float)):
@@ -484,6 +501,12 @@ def _process_llm_interpretation(
         return MathResult(
             handled=True,
             needs_clarification=True,
+        )
+
+    if intent == "provider_unavailable":
+        return MathResult(
+            handled=True,
+            provider_unavailable=True,
         )
 
     if intent == "interpretation_failed":

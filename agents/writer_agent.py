@@ -4,7 +4,11 @@ from typing import Literal
 from llm.provider_factory import get_provider
 from llm.providers.base_provider import BaseProvider
 
-ResponseType = Literal["ambiguous", "interpretation_failed"]
+ResponseType = Literal[
+    "ambiguous",
+    "interpretation_failed",
+    "provider_unavailable",
+]
 
 PORTUGUESE_MARKERS = {
     "ajuda",
@@ -286,12 +290,15 @@ def write_response(
         result: Authoritative mathematical result, if available.
         needs_context: Whether a previous mathematical result is required.
         error: Error message produced by the application.
-        response_type: Type of clarification response to generate.
+        response_type: Type of clarification or provider failure response.
 
     Returns:
         A localized response that respects the application guardrails.
     """
     language = _detect_language(message)
+
+    if response_type == "provider_unavailable":
+        return _fallback_response_type(message, response_type)
 
     if response_type is not None:
         prompts = {
@@ -303,13 +310,19 @@ def write_response(
                 "The mathematical request could not be interpreted reliably. "
                 "Ask the user to rephrase the mathematical request."
             ),
+            "provider_unavailable": (
+                "The language model provider is unavailable. "
+                "Inform the user that the request cannot be processed right now "
+                "and invite them to try again later."
+            ),
         }
 
         prompt = _build_prompt(
             message,
             language,
             (
-                "The request has not been interpreted with sufficient certainty. "
+                "The request has not been interpreted with sufficient certainty, "
+                "or the required provider is unavailable. "
                 f"{prompts[response_type]} "
                 "Do not calculate anything. "
                 "Do not guess the intended operation. "
@@ -708,7 +721,7 @@ def _fallback_response_type(
     message: str,
     response_type: ResponseType,
 ) -> str:
-    """Return a deterministic clarification or interpretation fallback."""
+    """Return a deterministic, localized clarification or failure response."""
     language = _detect_language(message)
 
     if response_type == "ambiguous":
@@ -719,6 +732,21 @@ def _fallback_response_type(
             return "¿Podrías aclarar qué deseas calcular?"
 
         return "Could you clarify what you want to calculate?"
+
+    if response_type == "provider_unavailable":
+        if language == "Portuguese":
+            return (
+                "O serviço de IA está indisponível no momento. "
+                "Tente novamente mais tarde."
+            )
+
+        if language == "Spanish":
+            return (
+                "El servicio de IA no está disponible en este momento. "
+                "Inténtalo de nuevo más tarde."
+            )
+
+        return "The AI service is currently unavailable. " "Please try again later."
 
     if language == "Portuguese":
         return "Poderia reformular seu pedido matemático?"

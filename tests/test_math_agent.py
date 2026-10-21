@@ -1,4 +1,4 @@
-﻿import json
+import json
 from unittest.mock import Mock, patch
 
 import pytest
@@ -401,6 +401,13 @@ def test_llm_contextual_operation_without_memory_requests_context() -> None:
         "[]",
         '{"intent": "unknown"}',
         '{"intent": "expression"}',
+        '{"intent": ["expression"]}',
+        '{"intent": {"type": "expression"}}',
+        '{"intent": "contextual_operation", "operator": ["/"], "operand": 2}',
+        (
+            '{"intent": "contextual_operation", '
+            '"operator": {"symbol": "/"}, "operand": 2}'
+        ),
         '{"intent": "contextual_operation", "operator": "%", "operand": 2}',
         '{"intent": "contextual_operation", "operator": "/", "operand": true}',
     ],
@@ -496,7 +503,8 @@ def test_llm_provider_exception_does_not_change_memory() -> None:
         result = process_math_message("Help me understand this", memory)
 
     assert result.handled is True
-    assert result.interpretation_failed is True
+    assert result.provider_unavailable is True
+    assert result.interpretation_failed is False
     assert memory.get_last_result() == 9.0
 
 

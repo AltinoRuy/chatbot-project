@@ -309,6 +309,39 @@ def test_process_message_with_interpretation_failure() -> None:
     )
 
 
+def test_process_message_with_provider_unavailable() -> None:
+    memory = Memory()
+
+    with (
+        patch(
+            "services.orchestrator.process_math_message",
+            return_value=MathResult(
+                handled=True,
+                provider_unavailable=True,
+            ),
+        ) as mock_process_math,
+        patch(
+            "services.orchestrator.write_response",
+            return_value=(
+                "The AI service is currently unavailable. " "Please try again later."
+            ),
+        ) as mock_write_response,
+    ):
+        result = process_message("What is five times seven?", memory)
+
+    assert result == (
+        "The AI service is currently unavailable. " "Please try again later."
+    )
+    mock_process_math.assert_called_once_with(
+        "What is five times seven?",
+        memory,
+    )
+    mock_write_response.assert_called_once_with(
+        "What is five times seven?",
+        response_type="provider_unavailable",
+    )
+
+
 def test_process_message_integrates_math_agent_memory_and_writer() -> None:
     memory = Memory()
 
@@ -333,3 +366,33 @@ def test_process_message_integrates_math_agent_memory_and_writer() -> None:
         assert memory.get_last_result() == 4.5
 
     assert provider.generate.call_count == 2
+
+
+def test_math_result_and_memory_survive_writer_provider_failure() -> None:
+    memory = Memory()
+    mock_provider = Mock()
+    mock_provider.generate.side_effect = [
+        RuntimeError("Writer provider unavailable"),
+        "The result is {{RESULT}}.",
+    ]
+
+    with (
+        patch(
+            "agents.math_agent.get_provider",
+            return_value=mock_provider,
+        ),
+        patch(
+            "agents.writer_agent.get_provider",
+            return_value=mock_provider,
+        ),
+    ):
+        first_response = process_message("5 + 4", memory)
+
+        assert first_response == "The result is 9."
+        assert memory.get_last_result() == 9.0
+
+        second_response = process_message("divide 2", memory)
+
+    assert second_response == "The result is 4.5."
+    assert memory.get_last_result() == 4.5
+    assert mock_provider.generate.call_count == 2
