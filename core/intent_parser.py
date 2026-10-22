@@ -6,6 +6,7 @@ NUMBER_WORDS = {
     "uma": 1,
     "dois": 2,
     "duas": 2,
+    "dos": 2,
     "tres": 3,
     "três": 3,
     "quatro": 4,
@@ -16,6 +17,16 @@ NUMBER_WORDS = {
     "oito": 8,
     "nove": 9,
     "dez": 10,
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
 }
 
 
@@ -99,11 +110,11 @@ def parse_intent(message: str) -> tuple[str, float] | None:
             "/",
         ),
         (
-            prefix + r"(?:suma|sumar)\s*(.+)$",
+            prefix + r"(?:sumar|suma)\s*(.+)$",
             "+",
         ),
         (
-            prefix + r"(?:resta|restar)\s*(.+)$",
+            prefix + r"(?:restar|resta)\s*(.+)$",
             "-",
         ),
         (

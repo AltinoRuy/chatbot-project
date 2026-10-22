@@ -275,3 +275,31 @@ def test_parse_english_contextual_division_with_result_reference() -> None:
     result = parse_intent("Divide the result by 7.")
 
     assert result == ("/", 7.0)
+
+
+def test_parse_spanish_sum_with_suma() -> None:
+    assert parse_intent("suma siete") == ("+", 7.0)
+
+
+def test_parse_spanish_sum_with_sumar() -> None:
+    assert parse_intent("sumar siete") == ("+", 7.0)
+
+
+def test_parse_spanish_sum_with_dos() -> None:
+    assert parse_intent("suma dos") == ("+", 2.0)
+
+
+def test_parse_spanish_sum_infinitive_with_dos() -> None:
+    assert parse_intent("sumar dos") == ("+", 2.0)
+
+
+def test_parse_spanish_subtraction_with_restar() -> None:
+    assert parse_intent("restar siete") == ("-", 7.0)
+
+
+def test_parse_spanish_subtraction_with_resta() -> None:
+    assert parse_intent("resta dos") == ("-", 2.0)
+
+
+def test_parse_english_add_with_number_word() -> None:
+    assert parse_intent("add seven") == ("+", 7.0)
