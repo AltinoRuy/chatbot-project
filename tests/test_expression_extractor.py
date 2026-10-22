@@ -46,6 +46,10 @@ def test_extract_number_words_spanish() -> None:
     assert extract_expression("cinco más cuatro") == "5+4"
 
 
+def test_extract_spanish_two_with_accented_plus() -> None:
+    assert extract_expression("dos más cuatro") == "2+4"
+
+
 def test_normalize_accented_operator_words() -> None:
     assert normalize_expression("cinco más cuatro") == "5+4"
 

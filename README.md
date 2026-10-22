@@ -59,7 +59,7 @@ In the second interaction, the Math Agent retrieves `9` from memory and applies 
 
 ## Architecture
 
-The application follows a simple layered architecture that separates responsibilities between mathematical processing, orchestration, language generation, and memory.
+The application follows a layered architecture that separates mathematical processing, orchestration, language generation, and memory.
 
 ```text
                          +----------------------+
@@ -87,15 +87,14 @@ The application follows a simple layered architecture that separates responsibil
                | Store result   |               |
                +-------+--------+               |
                        |                        |
-                       |                        |
                        v                        v
                +----------------------------------------+
                |          LLM Provider Abstraction      |
                +--------------------+-------------------+
                                     |
                                     v
-                              Ollama
-                            llama3.2:3b
+                                  Ollama
+                                llama3.2:3b
 
                +----------------+
                | Mathematical   |
@@ -262,13 +261,10 @@ Mathematical calculations are implemented as application-level tools.
 
 Available operations:
 
-```text
+```python
 add()
-
 subtract()
-
 multiply()
-
 divide()
 ```
 
@@ -345,6 +341,8 @@ Quanto é 5 + 4?          -> 5+4
 five plus four           -> 5+4
 
 cinco más cuatro         -> 5+4
+
+dos más cuatro           -> 2+4
 ```
 
 ### Intent Parser
@@ -375,7 +373,13 @@ multiplica por 2
 
 These operations use the latest result stored in session memory as the first operand.
 
-The parsing logic is deterministic and does not rely on an LLM to infer the mathematical operation.
+The parser also includes Spanish contextual number-word handling, such as:
+
+```text
+dividir por siete
+```
+
+The parsing logic is deterministic and does not rely on an LLM to infer the mathematical operation when a supported pattern can be parsed directly.
 
 ## Memory
 
@@ -385,7 +389,7 @@ The application uses two complementary forms of session state.
 
 Streamlit stores the conversation history in:
 
-```text
+```python
 st.session_state.messages
 ```
 
@@ -505,6 +509,7 @@ chatbot-project/
 +-- app.py
 +-- pyproject.toml
 +-- requirements.txt
++-- requirements-dev.txt
 +-- README.md
 ```
 
@@ -530,6 +535,7 @@ chatbot-project/
 - Black
 - Flake8
 - Isort
+- pip-audit
 
 The project intentionally does not use:
 
@@ -589,7 +595,13 @@ Activate it on Windows PowerShell:
 Install the Python dependencies:
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+```
+
+For development and testing tools, install:
+
+```bash
+python -m pip install -r requirements-dev.txt
 ```
 
 Make sure Ollama is running and the required model is available:
@@ -640,10 +652,10 @@ Run the test suite with coverage:
 python -m pytest --cov --cov-report=term-missing -q
 ```
 
-Latest previously validated status:
+Latest locally validated status:
 
 ```text
-273 passing tests
+275 passing tests
 
 94.41% code coverage
 
@@ -680,14 +692,14 @@ python -m isort --check-only .
 ### Flake8
 
 ```bash
-python -m flake8 . --extend-ignore=E203
+python -m flake8 .
 ```
 
 ### Coverage
 
 The project enforces a minimum coverage of 80%.
 
-Latest previously validated coverage:
+Latest locally validated coverage:
 
 ```text
 94.41%
@@ -695,11 +707,11 @@ Latest previously validated coverage:
 
 ## Dependency Security Note
 
-The latest dependency audit identified eight known vulnerabilities in Pillow 12.3.0, a dependency constrained by the current Streamlit version. Pillow 13.0.0 was identified as a fixed version, but it falls outside Streamlit's current declared Pillow version constraint.
+The dependency configuration was updated to use Streamlit 1.66.1 and Pillow 13.0.0 after a previous audit identified vulnerabilities in Pillow 12.3.0. The development environment also uses Black 26.10.1.
 
-The dependency conflict has not been resolved. Do not force-install an incompatible Pillow version or assume that the application is unaffected simply because it does not directly process uploaded images.
+The latest local dependency audit completed successfully with no known vulnerabilities found, and `pip check` reported no broken requirements. The GitHub Actions workflow now includes an audit of installed dependencies using `pip-audit`.
 
-Before using this project in a production environment, reassess the dependency tree, check for compatible upstream fixes, and rerun the dependency audit. This remains a known security limitation.
+Security audit results depend on the installed dependency versions and the vulnerability database at the time of the scan. Rerun the audit regularly and review CI results before considering the project ready for production.
 
 ## Design Principles
 
@@ -765,6 +777,8 @@ The parser also supports written-number operations such as:
 five plus four           -> 9
 
 cinco más cuatro         -> 9
+
+dos más cuatro           -> 6
 ```
 
 Contextual mathematical operations are also supported across multiple languages.

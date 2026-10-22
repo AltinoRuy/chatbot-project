@@ -12,6 +12,7 @@ NUMBER_WORDS = {
     "cinco": 5,
     "seis": 6,
     "sete": 7,
+    "siete": 7,
     "oito": 8,
     "nove": 9,
     "dez": 10,

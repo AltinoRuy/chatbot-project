@@ -265,6 +265,12 @@ def test_parse_spanish_contextual_division_with_result_reference() -> None:
     assert result == ("/", 7.0)
 
 
+def test_parse_spanish_contextual_division_with_number_word() -> None:
+    result = parse_intent("dividir por siete")
+
+    assert result == ("/", 7.0)
+
+
 def test_parse_english_contextual_division_with_result_reference() -> None:
     result = parse_intent("Divide the result by 7.")
 

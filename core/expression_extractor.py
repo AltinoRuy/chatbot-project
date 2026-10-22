@@ -8,6 +8,7 @@ NUMBER_WORDS = {
     "uma": "1",
     "dois": "2",
     "duas": "2",
+    "dos": "2",
     "tres": "3",
     "três": "3",
     "quatro": "4",
