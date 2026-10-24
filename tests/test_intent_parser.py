@@ -229,6 +229,15 @@ def test_returns_none_for_invalid_multiplication_value() -> None:
     assert result is None
 
 
+def test_returns_none_for_non_finite_operand() -> None:
+    for message in (
+        "divide by nan",
+        "divide by inf",
+        "divide by -inf",
+    ):
+        assert parse_intent(message) is None
+
+
 def test_parse_context_prefix() -> None:
     result = parse_intent("agora subtraia 2")
 
@@ -303,3 +312,23 @@ def test_parse_spanish_subtraction_with_resta() -> None:
 
 def test_parse_english_add_with_number_word() -> None:
     assert parse_intent("add seven") == ("+", 7.0)
+
+
+def test_parse_spanish_compound_number_veintiuno() -> None:
+    assert parse_intent("divide por veintiuno") == ("/", 21.0)
+
+
+def test_parse_spanish_compound_number_veinticinco() -> None:
+    assert parse_intent("divide por veinticinco") == ("/", 25.0)
+
+
+def test_parse_spanish_compound_number_veintidos() -> None:
+    assert parse_intent("divide por veintidós") == ("/", 22.0)
+
+
+def test_parse_spanish_compound_number_veintinueve() -> None:
+    assert parse_intent("multiplica por veintinueve") == ("*", 29.0)
+
+
+def test_parse_spanish_compound_number_veintitres() -> None:
+    assert parse_intent("suma veintitrés") == ("+", 23.0)

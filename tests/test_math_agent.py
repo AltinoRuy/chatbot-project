@@ -1,4 +1,4 @@
-import json
+﻿import json
 from unittest.mock import Mock, patch
 
 import pytest
@@ -403,13 +403,13 @@ def test_llm_contextual_operation_without_memory_requests_context() -> None:
         '{"intent": "expression"}',
         '{"intent": ["expression"]}',
         '{"intent": {"type": "expression"}}',
+        '{"intent": "contextual_operation", "operator": "%", "operand": 2}',
+        '{"intent": "contextual_operation", "operator": "/", "operand": true}',
         '{"intent": "contextual_operation", "operator": ["/"], "operand": 2}',
         (
             '{"intent": "contextual_operation", '
             '"operator": {"symbol": "/"}, "operand": 2}'
         ),
-        '{"intent": "contextual_operation", "operator": "%", "operand": 2}',
-        '{"intent": "contextual_operation", "operator": "/", "operand": true}',
     ],
 )
 def test_llm_rejects_invalid_interpretations(response: str) -> None:
@@ -550,6 +550,29 @@ def test_expression_grounding_rejects_unmentioned_expression(
         ("divide by two or multiply by three", "/", 2, False),
         ("divide by 2", "/", 2, True),
         ("dividir por três", "/", 3, True),
+        ("suma dos", "+", 2, True),
+        ("resta dos", "-", 2, True),
+        ("multiplica por dos", "*", 2, True),
+        ("divide por siete", "/", 7, True),
+        ("divide el resultado por siete", "/", 7, True),
+        ("divide por veintiuno", "/", 21, True),
+        ("divide por veintiún", "/", 21, True),
+        ("divide por veintiun", "/", 21, True),
+        ("divide por veintiuna", "/", 21, True),
+        ("divide por veintidós", "/", 22, True),
+        ("divide por veintidos", "/", 22, True),
+        ("divide por veintitrés", "/", 23, True),
+        ("divide por veintitres", "/", 23, True),
+        ("divide por veinticuatro", "/", 24, True),
+        ("divide por veinticinco", "/", 25, True),
+        ("divide por veintiséis", "/", 26, True),
+        ("divide por veintiseis", "/", 26, True),
+        ("divide por veintisiete", "/", 27, True),
+        ("divide por veintiocho", "/", 28, True),
+        ("divide por veintinueve", "/", 29, True),
+        ("divide por veinticinco", "/", 24, False),
+        ("divide por veinticinco y tres", "/", 25, False),
+        ("multiply by twenty-five", "*", 25, True),
     ],
 )
 def test_contextual_operation_grounding(
@@ -558,7 +581,14 @@ def test_contextual_operation_grounding(
     operand: float,
     expected: bool,
 ) -> None:
-    assert _contextual_operation_is_grounded(operator, operand, message) is expected
+    assert (
+        _contextual_operation_is_grounded(
+            operator,
+            operand,
+            message,
+        )
+        is expected
+    )
 
 
 def test_contextual_operation_grounding_rejects_wrong_operator() -> None:

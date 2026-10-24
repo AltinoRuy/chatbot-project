@@ -1,6 +1,8 @@
+import math
 import re
 
 NUMBER_WORDS = {
+    # Portuguese
     "zero": 0,
     "um": 1,
     "uma": 1,
@@ -13,10 +15,10 @@ NUMBER_WORDS = {
     "cinco": 5,
     "seis": 6,
     "sete": 7,
-    "siete": 7,
     "oito": 8,
     "nove": 9,
     "dez": 10,
+    # English
     "one": 1,
     "two": 2,
     "three": 3,
@@ -27,6 +29,45 @@ NUMBER_WORDS = {
     "eight": 8,
     "nine": 9,
     "ten": 10,
+    # Spanish
+    "uno": 1,
+    "una": 1,
+    "un": 1,
+    "dos": 2,
+    "tres": 3,
+    "cuatro": 4,
+    "cinco": 5,
+    "seis": 6,
+    "siete": 7,
+    "ocho": 8,
+    "nueve": 9,
+    "diez": 10,
+    "once": 11,
+    "doce": 12,
+    "trece": 13,
+    "catorce": 14,
+    "quince": 15,
+    "dieciseis": 16,
+    "dieciséis": 16,
+    "diecisiete": 17,
+    "dieciocho": 18,
+    "diecinueve": 19,
+    "veinte": 20,
+    "veintiuno": 21,
+    "veintiún": 21,
+    "veintiun": 21,
+    "veintiuna": 21,
+    "veintidós": 22,
+    "veintidos": 22,
+    "veintitrés": 23,
+    "veintitres": 23,
+    "veinticuatro": 24,
+    "veinticinco": 25,
+    "veintiséis": 26,
+    "veintiseis": 26,
+    "veintisiete": 27,
+    "veintiocho": 28,
+    "veintinueve": 29,
 }
 
 
@@ -37,7 +78,7 @@ def _parse_number(value: str) -> float | None:
         value: Value to parse.
 
     Returns:
-        The parsed number, or None if the value is invalid.
+        The parsed finite number, or None if the value is invalid.
     """
     value = value.lower().strip()
 
@@ -45,9 +86,14 @@ def _parse_number(value: str) -> float | None:
         return float(NUMBER_WORDS[value])
 
     try:
-        return float(value)
+        number = float(value)
     except ValueError:
         return None
+
+    if not math.isfinite(number):
+        return None
+
+    return number
 
 
 def parse_intent(message: str) -> tuple[str, float] | None:

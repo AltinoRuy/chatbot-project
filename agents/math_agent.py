@@ -285,17 +285,17 @@ def _contextual_operation_is_grounded(
     operation_patterns = {
         "+": (
             r"\b(?:add|addition|plus|sum|increase by|somar|some|mais|"
-            r"adicionar|adicione)\b"
+            r"adicionar|adicione|suma|sumar)\b"
         ),
         "-": (
             r"\b(?:subtract|subtraction|minus|take away|decrease by|"
-            r"subtrair|subtraia|menos|diminuir)\b"
+            r"subtrair|subtraia|menos|diminuir|resta|restar)\b"
         ),
         "*": (
             r"\b(?:multiply|multiplication|multiplied|times|product|"
-            r"vezes|multiplicar|multiplique)\b"
+            r"vezes|multiplicar|multiplique|multiplica)\b"
         ),
-        "/": (r"\b(?:divide|division|divided|dividir|divida|dividido|divisão)\b"),
+        "/": (r"\b(?:divide|division|divided|dividir|divida|dividido|" r"divisão)\b"),
     }
 
     detected_operations = []
@@ -313,6 +313,7 @@ def _contextual_operation_is_grounded(
         return False
 
     number_words = {
+        # English
         "zero": 0,
         "one": 1,
         "two": 2,
@@ -334,6 +335,7 @@ def _contextual_operation_is_grounded(
         "eighteen": 18,
         "nineteen": 19,
         "twenty": 20,
+        # Portuguese
         "um": 1,
         "uma": 1,
         "dois": 2,
@@ -359,15 +361,56 @@ def _contextual_operation_is_grounded(
         "dezoito": 18,
         "dezenove": 19,
         "vinte": 20,
+        # Spanish
+        "un": 1,
+        "una": 1,
+        "uno": 1,
+        "dos": 2,
+        "tres": 3,
+        "cuatro": 4,
+        "cinco": 5,
+        "seis": 6,
+        "siete": 7,
+        "ocho": 8,
+        "nueve": 9,
+        "diez": 10,
+        "once": 11,
+        "doce": 12,
+        "trece": 13,
+        "catorce": 14,
+        "quince": 15,
+        "dieciséis": 16,
+        "dieciseis": 16,
+        "diecisiete": 17,
+        "dieciocho": 18,
+        "diecinueve": 19,
+        "veinte": 20,
+        "veintiuno": 21,
+        "veintiún": 21,
+        "veintiun": 21,
+        "veintiuna": 21,
+        "veintidós": 22,
+        "veintidos": 22,
+        "veintitrés": 23,
+        "veintitres": 23,
+        "veinticuatro": 24,
+        "veinticinco": 25,
+        "veintiséis": 26,
+        "veintiseis": 26,
+        "veintisiete": 27,
+        "veintiocho": 28,
+        "veintinueve": 29,
     }
 
     compound_number_pattern = r"twenty-(?:one|two|three|four|five|six|seven|eight|nine)"
+
     number_word_pattern = "|".join(
         [
             compound_number_pattern,
             *(re.escape(word) for word in sorted(number_words, key=len, reverse=True)),
         ]
     )
+
     number_pattern = (
         rf"(?<!\w)-?\d+(?:[.,]\d+)?(?!\w)|" rf"\b(?:{number_word_pattern})\b"
     )

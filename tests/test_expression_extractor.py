@@ -149,3 +149,27 @@ def test_context_operation_with_prefix() -> None:
 
 def test_context_operation_with_prefix_is_not_invalid() -> None:
     assert is_invalid_mathematical_expression("agora subtraia por 2") is False
+
+
+def test_extract_spanish_one_plus_two() -> None:
+    assert extract_expression("uno más dos") == "1+2"
+
+
+def test_extract_spanish_eight_plus_two() -> None:
+    assert extract_expression("ocho más dos") == "8+2"
+
+
+def test_extract_spanish_nine_plus_one() -> None:
+    assert extract_expression("nueve más uno") == "9+1"
+
+
+def test_normalize_spanish_contextual_division() -> None:
+    assert normalize_expression("dividir por ocho") == "/8"
+
+
+def test_detect_spanish_contextual_division() -> None:
+    assert is_context_operation("dividir por ocho") is True
+
+
+def test_spanish_contextual_division_is_not_invalid() -> None:
+    assert is_invalid_mathematical_expression("dividir por ocho") is False

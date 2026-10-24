@@ -655,9 +655,9 @@ python -m pytest --cov --cov-report=term-missing -q
 Latest locally validated status:
 
 ```text
-275 passing tests
+319 passing tests
 
-94.41% code coverage
+94.44% code coverage
 
 80% minimum coverage threshold
 ```
