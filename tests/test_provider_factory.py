@@ -1,8 +1,181 @@
-from llm.provider_factory import get_provider
-from llm.providers.ollama_provider import OllamaProvider
+from unittest.mock import patch
+
+import pytest
+
+from llm.provider_factory import (
+    _create_gemini_provider,
+    _create_ollama_provider,
+    _create_openai_provider,
+    get_provider,
+)
+from llm.providers.fallback_provider import FallbackProvider
 
 
-def test_get_provider_returns_ollama_provider() -> None:
+def test_get_provider_uses_default_provider_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("CHATBOT_PROVIDERS", raising=False)
+
     provider = get_provider()
 
-    assert isinstance(provider, OllamaProvider)
+    assert isinstance(provider, FallbackProvider)
+    assert [name.casefold() for name, _ in provider.providers] == [
+        "ollama",
+        "gemini",
+        "openai",
+    ]
+
+
+def test_get_provider_supports_cloud_only_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CHATBOT_PROVIDERS", "gemini,openai")
+
+    provider = get_provider()
+
+    assert isinstance(provider, FallbackProvider)
+    assert [name.casefold() for name, _ in provider.providers] == [
+        "gemini",
+        "openai",
+    ]
+
+
+def test_get_provider_preserves_custom_provider_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CHATBOT_PROVIDERS", "openai,gemini")
+
+    provider = get_provider()
+
+    assert [name.casefold() for name, _ in provider.providers] == [
+        "openai",
+        "gemini",
+    ]
+
+
+def test_get_provider_supports_single_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CHATBOT_PROVIDERS", "ollama")
+
+    provider = get_provider()
+
+    assert [name.casefold() for name, _ in provider.providers] == ["ollama"]
+
+
+def test_get_provider_rejects_empty_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CHATBOT_PROVIDERS", " , ")
+
+    with pytest.raises(
+        ValueError,
+        match="must contain at least one provider",
+    ):
+        get_provider()
+
+
+def test_get_provider_rejects_duplicate_providers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CHATBOT_PROVIDERS", "gemini,gemini")
+
+    with pytest.raises(
+        ValueError,
+        match="cannot contain duplicate providers",
+    ):
+        get_provider()
+
+
+def test_get_provider_rejects_unsupported_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CHATBOT_PROVIDERS", "gemini,claude")
+
+    with pytest.raises(
+        ValueError,
+        match="Unsupported provider",
+    ):
+        get_provider()
+
+
+@pytest.mark.parametrize(
+    ("factory", "module", "class_name", "env_var", "default_model"),
+    [
+        (
+            _create_ollama_provider,
+            "llm.providers.ollama_provider",
+            "OllamaProvider",
+            "OLLAMA_MODEL",
+            "llama3.2:3b",
+        ),
+        (
+            _create_gemini_provider,
+            "llm.providers.gemini_provider",
+            "GeminiProvider",
+            "GEMINI_MODEL",
+            "gemini-3.8-flash",
+        ),
+        (
+            _create_openai_provider,
+            "llm.providers.openai_provider",
+            "OpenAIProvider",
+            "OPENAI_MODEL",
+            "gpt-5-mini",
+        ),
+    ],
+)
+def test_provider_factory_uses_default_model(
+    monkeypatch: pytest.MonkeyPatch,
+    factory: object,
+    module: str,
+    class_name: str,
+    env_var: str,
+    default_model: str,
+) -> None:
+    monkeypatch.delenv(env_var, raising=False)
+
+    with patch(f"{module}.{class_name}") as mock_provider:
+        provider_factory = factory
+        provider_factory()
+
+    mock_provider.assert_called_once_with(model=default_model)
+
+
+@pytest.mark.parametrize(
+    ("factory", "module", "class_name", "env_var"),
+    [
+        (
+            _create_ollama_provider,
+            "llm.providers.ollama_provider",
+            "OllamaProvider",
+            "OLLAMA_MODEL",
+        ),
+        (
+            _create_gemini_provider,
+            "llm.providers.gemini_provider",
+            "GeminiProvider",
+            "GEMINI_MODEL",
+        ),
+        (
+            _create_openai_provider,
+            "llm.providers.openai_provider",
+            "OpenAIProvider",
+            "OPENAI_MODEL",
+        ),
+    ],
+)
+def test_provider_factory_uses_custom_model(
+    monkeypatch: pytest.MonkeyPatch,
+    factory: object,
+    module: str,
+    class_name: str,
+    env_var: str,
+) -> None:
+    monkeypatch.setenv(env_var, "custom-test-model")
+
+    with patch(f"{module}.{class_name}") as mock_provider:
+        provider_factory = factory
+        provider_factory()
+
+    mock_provider.assert_called_once_with(model="custom-test-model")

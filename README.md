@@ -46,7 +46,10 @@ In the second interaction, the Math Agent retrieves `9` from memory and applies 
 - Central Orchestrator
 - Agent-specific prompts and guardrails
 - LLM provider abstraction
+- Configurable LLM provider fallback
 - Ollama integration
+- Google Gemini integration
+- OpenAI integration
 - Writer guardrails
 - Multilingual mathematical parsing
 - Unit tests with pytest
@@ -87,14 +90,21 @@ The application follows a layered architecture that separates mathematical proce
                | Store result   |               |
                +-------+--------+               |
                        |                        |
-                       v                        v
-               +----------------------------------------+
-               |          LLM Provider Abstraction      |
-               +--------------------+-------------------+
+                       +-----------+------------+
+                                   |
+                                   v
+                       +-------------------------+
+                       | LLM Provider Abstraction|
+                       |      Factory + Fallback |
+                       +------------+------------+
                                     |
-                                    v
-                                  Ollama
-                                llama3.2:3b
+                  +-----------------+-----------------+
+                  |                 |                 |
+                  v                 v                 v
+             Ollama Provider   Gemini Provider   OpenAI Provider
+                  |                 |                 |
+                  v                 v                 v
+             Local model       Gemini API        OpenAI API
 
                +----------------+
                | Mathematical   |
@@ -443,25 +453,24 @@ Application
 Provider Factory
      |
      v
-Base Provider
+Fallback Provider
      |
-     +------------------+
-     |                  |
-     v                  v
-Ollama Provider     Other Providers
-     |              (implemented separately)
-     v
-   Ollama
+     +--> Ollama Provider
      |
-     v
-llama3.2:3b
+     +--> Gemini Provider
+     |
+     +--> OpenAI Provider
 ```
 
-The local application uses Ollama with:
+The provider factory configures the fallback order through the `CHATBOT_PROVIDERS` environment variable. By default, the order is `ollama,gemini,openai`.
 
-```text
-llama3.2:3b
-```
+The default models configured by the application are:
+
+- Ollama: `llama3.2:3b`
+- Gemini: `gemini-3.8-flash`
+- OpenAI: `gpt-5-mini`
+
+The fallback provider tries each configured provider in order and returns the first non-empty response. If all providers fail, it raises a `ProviderFallbackError`.
 
 Provider-related modules are located under:
 
@@ -470,12 +479,36 @@ llm/
     provider_factory.py
     providers/
         base_provider.py
+        fallback_provider.py
         ollama_provider.py
+        gemini_provider.py
         openai_provider.py
-        claude_provider.py
 ```
 
-The active application provider is Ollama. `OpenAIProvider` is implemented as an additional provider implementation, while `claude_provider.py` is reserved for future provider support.
+### Provider Configuration
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `CHATBOT_PROVIDERS` | Comma-separated provider order | `ollama,gemini,openai` |
+| `OLLAMA_MODEL` | Ollama model identifier | `llama3.2:3b` |
+| `GEMINI_API_KEY` | Gemini API key | Required when Gemini is used |
+| `GEMINI_MODEL` | Gemini model identifier | `gemini-3.8-flash` |
+| `OPENAI_API_KEY` | OpenAI API key | Required when OpenAI is used |
+| `OPENAI_MODEL` | OpenAI model identifier | `gpt-5-mini` |
+
+Ollama runs locally. Gemini and OpenAI require valid API credentials when they are included in the provider chain.
+
+For example, to use Gemini before OpenAI without Ollama, configure:
+
+```powershell
+$env:CHATBOT_PROVIDERS = "gemini,openai"
+$env:GEMINI_API_KEY = "your-gemini-api-key"
+$env:OPENAI_API_KEY = "your-openai-api-key"
+```
+
+These commands set environment variables for the current PowerShell session only. Use secure secret management for persistent or production deployments; do not commit API keys to the repository.
+
+If a provider fails or returns an empty response, the fallback mechanism attempts the next configured provider.
 
 ## Project Structure
 
@@ -500,9 +533,10 @@ chatbot-project/
 |   +-- provider_factory.py
 |   +-- providers/
 |       +-- base_provider.py
+|       +-- fallback_provider.py
 |       +-- ollama_provider.py
+|       +-- gemini_provider.py
 |       +-- openai_provider.py
-|       +-- claude_provider.py
 |
 +-- tests/
 |
@@ -529,6 +563,8 @@ chatbot-project/
 - Python
 - Streamlit
 - Ollama
+- Google Gen AI SDK
+- OpenAI SDK
 - `llama3.2:3b`
 - pytest
 - pytest-cov
@@ -548,12 +584,12 @@ The project intentionally does not use:
 Before running the application, make sure the following are installed:
 
 - Python 3.14.4 (validated; other versions have not been verified)
-- Ollama
+- Ollama, if using the local provider
 - Git
 
 Install the Ollama application separately from [the official download page](https://ollama.com/download). The `ollama` entry in `requirements.txt` is the Python client library; it does not install the Ollama application.
 
-The project also requires the Ollama model:
+The project uses the following default Ollama model:
 
 ```text
 llama3.2:3b
@@ -570,6 +606,8 @@ setx HIP_VISIBLE_DEVICES "-1"
 After setting these variables, restart the Ollama process and open a new terminal session so the environment variables are applied to newly started processes.
 
 The exact Vulkan device index may vary depending on the GPUs detected by the system.
+
+For Gemini and OpenAI, configure the corresponding API key environment variables before using those providers.
 
 ## Installation
 
@@ -594,19 +632,19 @@ Activate it on Windows PowerShell:
 
 Install the Python dependencies:
 
-```bash
+```powershell
 python -m pip install -r requirements.txt
 ```
 
 For development and testing tools, install:
 
-```bash
+```powershell
 python -m pip install -r requirements-dev.txt
 ```
 
-Make sure Ollama is running and the required model is available:
+If using Ollama, make sure the service is running and the model is available:
 
-```bash
+```powershell
 ollama pull llama3.2:3b
 ```
 
@@ -614,7 +652,7 @@ ollama pull llama3.2:3b
 
 Start the Streamlit application:
 
-```bash
+```powershell
 streamlit run app.py
 ```
 
@@ -642,22 +680,22 @@ Expected results:
 
 Run the complete test suite:
 
-```bash
+```powershell
 python -m pytest -q
 ```
 
 Run the test suite with coverage:
 
-```bash
+```powershell
 python -m pytest --cov --cov-report=term-missing -q
 ```
 
 Latest locally validated status:
 
 ```text
-319 passing tests
+343 passing tests
 
-94.44% code coverage
+94.89% code coverage
 
 80% minimum coverage threshold
 ```
@@ -679,19 +717,19 @@ The minimum required coverage is enforced through `pyproject.toml`.
 
 ### Black
 
-```bash
+```powershell
 python -m black --check .
 ```
 
 ### Isort
 
-```bash
+```powershell
 python -m isort --check-only .
 ```
 
 ### Flake8
 
-```bash
+```powershell
 python -m flake8 .
 ```
 
@@ -702,14 +740,14 @@ The project enforces a minimum coverage of 80%.
 Latest locally validated coverage:
 
 ```text
-94.41%
+94.89%
 ```
 
 ## Dependency Security Note
 
 The dependency configuration was updated to use Streamlit 1.66.1 and Pillow 13.0.0 after a previous audit identified vulnerabilities in Pillow 12.3.0. The development environment also uses Black 26.10.1.
 
-The latest local dependency audit completed successfully with no known vulnerabilities found, and `pip check` reported no broken requirements. The GitHub Actions workflow now includes an audit of installed dependencies using `pip-audit`.
+The latest local dependency audit completed successfully with no known vulnerabilities found, and `pip check` reported no broken requirements. The GitHub Actions workflow includes an audit of installed dependencies using `pip-audit`.
 
 Security audit results depend on the installed dependency versions and the vulnerability database at the time of the scan. Rerun the audit regularly and review CI results before considering the project ready for production.
 
@@ -747,7 +785,7 @@ are resolved using the previous mathematical result stored in session memory.
 
 ### Provider abstraction
 
-The application does not directly couple agent logic to a specific LLM implementation.
+The application does not directly couple agent logic to a specific LLM implementation. Providers are selected through configuration and are invoked through the fallback mechanism.
 
 ### Guardrails
 
