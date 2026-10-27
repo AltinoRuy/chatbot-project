@@ -8,10 +8,13 @@ from llm.provider_factory import (
     _create_openai_provider,
     get_provider,
 )
-from llm.providers.fallback_provider import FallbackProvider
+from llm.providers.fallback_provider import (
+    FallbackProvider,
+    ProviderFallbackError,
+)
 
 
-def test_get_provider_uses_default_provider_order(
+def test_get_provider_uses_local_provider_by_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("CHATBOT_PROVIDERS", raising=False)
@@ -19,11 +22,31 @@ def test_get_provider_uses_default_provider_order(
     provider = get_provider()
 
     assert isinstance(provider, FallbackProvider)
-    assert [name.casefold() for name, _ in provider.providers] == [
-        "ollama",
-        "gemini",
-        "openai",
-    ]
+    assert [name.casefold() for name, _ in provider.providers] == ["ollama"]
+
+
+def test_default_configuration_never_falls_back_to_cloud(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("CHATBOT_PROVIDERS", raising=False)
+
+    with (
+        patch("llm.provider_factory._create_ollama_provider") as ollama_factory,
+        patch("llm.provider_factory._create_gemini_provider") as gemini_factory,
+        patch("llm.provider_factory._create_openai_provider") as openai_factory,
+    ):
+        ollama_factory.return_value.generate.side_effect = TimeoutError(
+            "Local provider timed out"
+        )
+
+        provider = get_provider()
+
+        with pytest.raises(ProviderFallbackError):
+            provider.generate("Test prompt")
+
+    ollama_factory.assert_called_once_with()
+    gemini_factory.assert_not_called()
+    openai_factory.assert_not_called()
 
 
 def test_get_provider_supports_cloud_only_configuration(

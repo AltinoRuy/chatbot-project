@@ -40,8 +40,9 @@ def get_provider() -> BaseProvider:
     """Return a configurable provider fallback chain.
 
     The CHATBOT_PROVIDERS environment variable defines the provider
-    order, separated by commas. If it is not set, the default order is
-    Ollama, Gemini, then OpenAI.
+    order, separated by commas. By default, only the local Ollama
+    provider is enabled. Cloud providers must be explicitly included
+    in CHATBOT_PROVIDERS.
 
     Returns:
         A fallback provider containing the selected providers.
@@ -52,7 +53,7 @@ def get_provider() -> BaseProvider:
     """
     configured = os.getenv(
         "CHATBOT_PROVIDERS",
-        "ollama,gemini,openai",
+        "ollama",
     )
 
     provider_names = [

@@ -1,10 +1,27 @@
 """Fallback orchestration for language model providers."""
 
+import logging
 from collections.abc import Callable
+
+import httpx
+import ollama
+from google.genai import errors as gemini_errors
+from openai import APIError
 
 from llm.providers.base_provider import BaseProvider
 
 ProviderFactory = Callable[[], BaseProvider]
+
+logger = logging.getLogger(__name__)
+
+OPERATIONAL_ERRORS = (
+    TimeoutError,
+    ConnectionError,
+    httpx.HTTPError,
+    ollama.ResponseError,
+    APIError,
+    gemini_errors.APIError,
+)
 
 
 class ProviderFallbackError(RuntimeError):
@@ -51,14 +68,23 @@ class FallbackProvider(BaseProvider):
             try:
                 provider = provider_factory()
                 response = provider.generate(prompt)
-            except Exception as error:
+            except OPERATIONAL_ERRORS as error:
                 failures.append(f"{provider_name} ({type(error).__name__})")
+                logger.warning(
+                    "Provider %s failed with %s; trying the next provider.",
+                    provider_name,
+                    type(error).__name__,
+                )
                 continue
 
             if isinstance(response, str) and response.strip():
                 return response
 
             failures.append(f"{provider_name} (empty response)")
+            logger.warning(
+                "Provider %s returned an empty or invalid response.",
+                provider_name,
+            )
 
         failure_summary = ", ".join(failures)
         raise ProviderFallbackError(

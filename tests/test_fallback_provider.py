@@ -30,11 +30,11 @@ def test_returns_first_successful_provider_response() -> None:
     gemini_factory.assert_not_called()
 
 
-def test_tries_next_provider_when_first_factory_fails() -> None:
+def test_tries_next_provider_when_first_factory_times_out() -> None:
     gemini = Mock(spec=BaseProvider)
     gemini.generate.return_value = "Response from Gemini."
 
-    ollama_factory = Mock(side_effect=RuntimeError("Ollama unavailable"))
+    ollama_factory = Mock(side_effect=TimeoutError("Ollama timed out"))
     gemini_factory = Mock(return_value=gemini)
 
     fallback = FallbackProvider(
@@ -52,7 +52,60 @@ def test_tries_next_provider_when_first_factory_fails() -> None:
     gemini.generate.assert_called_once_with("Hello")
 
 
-def test_tries_next_provider_when_generation_fails() -> None:
+@pytest.mark.parametrize(
+    "error",
+    [
+        TypeError("Unexpected type"),
+        AttributeError("Unexpected missing attribute"),
+    ],
+)
+def test_propagates_programming_errors_from_factory(
+    error: Exception,
+) -> None:
+    ollama_factory = Mock(side_effect=error)
+    gemini_factory = Mock()
+
+    fallback = FallbackProvider(
+        [
+            ("Ollama", ollama_factory),
+            ("Gemini", gemini_factory),
+        ]
+    )
+
+    with pytest.raises(type(error), match=str(error)):
+        fallback.generate("Hello")
+
+    gemini_factory.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        TypeError("Unexpected type"),
+        AttributeError("Unexpected missing attribute"),
+    ],
+)
+def test_propagates_programming_errors_from_generation(
+    error: Exception,
+) -> None:
+    ollama = Mock(spec=BaseProvider)
+    ollama.generate.side_effect = error
+    gemini_factory = Mock()
+
+    fallback = FallbackProvider(
+        [
+            ("Ollama", Mock(return_value=ollama)),
+            ("Gemini", gemini_factory),
+        ]
+    )
+
+    with pytest.raises(type(error), match=str(error)):
+        fallback.generate("Hello")
+
+    gemini_factory.assert_not_called()
+
+
+def test_tries_next_provider_when_generation_times_out() -> None:
     ollama = Mock(spec=BaseProvider)
     ollama.generate.side_effect = TimeoutError("Request timed out")
 
