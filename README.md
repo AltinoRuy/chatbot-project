@@ -472,6 +472,8 @@ The default models configured by the application are:
 
 The fallback provider tries each configured provider in order and returns the first non-empty response. If all providers fail, it raises a `ProviderFallbackError`.
 
+A configured cloud provider with a missing required API key raises `ProviderConfigurationError`, allowing the fallback chain to try the next configured provider. Invalid global `CHATBOT_PROVIDERS` configuration (empty lists, duplicate names, or unsupported providers) fails immediately with `ValueError`. Only explicitly classified operational errors and provider-specific configuration errors allow fallback; unexpected programming errors propagate. Fallback diagnostics and logs include the provider name and exception type, not raw exception messages or credentials.
+
 Provider-related modules are located under:
 
 ```text
@@ -479,6 +481,7 @@ llm/
     provider_factory.py
     providers/
         base_provider.py
+        errors.py
         fallback_provider.py
         ollama_provider.py
         gemini_provider.py
@@ -533,6 +536,7 @@ chatbot-project/
 |   +-- provider_factory.py
 |   +-- providers/
 |       +-- base_provider.py
+|       +-- errors.py
 |       +-- fallback_provider.py
 |       +-- ollama_provider.py
 |       +-- gemini_provider.py
@@ -693,9 +697,9 @@ python -m pytest --cov --cov-report=term-missing -q
 Latest locally validated status:
 
 ```text
-354 passing tests
+364 passing tests
 
-94.96% code coverage
+95.01% code coverage
 
 80% minimum coverage threshold
 ```
@@ -740,7 +744,7 @@ The project enforces a minimum coverage of 80%.
 Latest locally validated coverage:
 
 ```text
-94.96%
+95.01%
 ```
 
 ## Dependency Security Note
