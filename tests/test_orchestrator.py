@@ -397,3 +397,45 @@ def test_math_result_and_memory_survive_writer_provider_failure() -> None:
     assert second_response == "The result is 4.5."
     assert memory.get_last_result() == 4.5
     assert mock_provider.generate.call_count == 2
+
+
+def test_process_message_returns_safe_response_for_unexpected_math_error(
+    caplog,
+) -> None:
+    """Hide unexpected math errors behind a safe application response."""
+    memory = Memory()
+    secret = "api_key=do-not-expose"
+
+    with patch(
+        "services.orchestrator.process_math_message",
+        side_effect=RuntimeError(secret),
+    ):
+        response = process_message("hello", memory)
+
+    assert response == (
+        "An unexpected error occurred while processing your message. "
+        "Please try again."
+    )
+    assert "RuntimeError" in caplog.text
+    assert secret not in response
+    assert secret not in caplog.text
+
+
+def test_math_result_is_preserved_when_writer_raises_unexpected_error(
+    caplog,
+) -> None:
+    """Preserve the validated math result when response generation crashes."""
+    memory = Memory()
+    secret = "sk-test-secret-value"
+
+    with patch(
+        "services.orchestrator.write_response",
+        side_effect=RuntimeError(f"Provider error: {secret}"),
+    ):
+        response = process_message("5 + 4", memory)
+
+    assert response == "The result is 9."
+    assert memory.get_last_result() == 9.0
+    assert "RuntimeError" in caplog.text
+    assert secret not in response
+    assert secret not in caplog.text

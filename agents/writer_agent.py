@@ -682,6 +682,11 @@ def _fallback_result(message: str, formatted_result: str) -> str:
     return f"The result is {formatted_result}."
 
 
+def fallback_result_response(message: str, result: float) -> str:
+    """Return a deterministic localized response for an authoritative result."""
+    return _fallback_result(message, _format_result(result))
+
+
 def _fallback_context(message: str) -> str:
     """Explain that no previous mathematical result is available."""
     language = _detect_language(message)

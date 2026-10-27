@@ -697,9 +697,9 @@ python -m pytest --cov --cov-report=term-missing -q
 Latest locally validated status:
 
 ```text
-364 passing tests
+366 passing tests
 
-95.01% code coverage
+94.99% code coverage
 
 80% minimum coverage threshold
 ```
@@ -744,7 +744,7 @@ The project enforces a minimum coverage of 80%.
 Latest locally validated coverage:
 
 ```text
-95.01%
+94.99%
 ```
 
 ## Dependency Security Note
