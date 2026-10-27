@@ -2,6 +2,7 @@ from unittest.mock import Mock, patch
 
 from agents.math_agent import MathResult
 from core.tools import DivisionByZeroError
+from llm.providers.fallback_provider import ProviderFallbackError
 from services.memory import Memory
 from services.orchestrator import process_message
 
@@ -372,7 +373,7 @@ def test_math_result_and_memory_survive_writer_provider_failure() -> None:
     memory = Memory()
     mock_provider = Mock()
     mock_provider.generate.side_effect = [
-        RuntimeError("Writer provider unavailable"),
+        ProviderFallbackError("Writer provider unavailable"),
         "The result is {{RESULT}}.",
     ]
 

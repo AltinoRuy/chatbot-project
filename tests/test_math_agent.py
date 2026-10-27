@@ -1,4 +1,4 @@
-﻿import json
+import json
 from unittest.mock import Mock, patch
 
 import pytest
@@ -17,6 +17,7 @@ from agents.math_agent import (
     tokenize,
 )
 from core.tools import DivisionByZeroError
+from llm.providers.fallback_provider import ProviderFallbackError
 from services.memory import Memory
 
 
@@ -480,7 +481,7 @@ def test_llm_provider_exception_does_not_change_memory() -> None:
     memory.save_result(9.0)
 
     provider = Mock()
-    provider.generate.side_effect = RuntimeError("Provider unavailable")
+    provider.generate.side_effect = ProviderFallbackError("All providers failed")
 
     with (
         patch(
@@ -506,6 +507,40 @@ def test_llm_provider_exception_does_not_change_memory() -> None:
     assert result.provider_unavailable is True
     assert result.interpretation_failed is False
     assert memory.get_last_result() == 9.0
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        TypeError("Unexpected type"),
+        AttributeError("Unexpected missing attribute"),
+    ],
+)
+def test_llm_programming_errors_propagate(error: Exception) -> None:
+    memory = Memory()
+    provider = Mock()
+    provider.generate.side_effect = error
+
+    with (
+        patch(
+            "agents.math_agent.extract_expression",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.is_invalid_mathematical_expression",
+            return_value=False,
+        ),
+        patch(
+            "agents.math_agent.parse_intent",
+            return_value=None,
+        ),
+        patch(
+            "agents.math_agent.get_provider",
+            return_value=provider,
+        ),
+        pytest.raises(type(error), match=str(error)),
+    ):
+        process_math_message("Help me understand this", memory)
 
 
 @pytest.mark.parametrize(

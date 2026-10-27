@@ -3,6 +3,10 @@ from typing import Literal
 
 from llm.provider_factory import get_provider
 from llm.providers.base_provider import BaseProvider
+from llm.providers.fallback_provider import (
+    OPERATIONAL_ERRORS,
+    ProviderFallbackError,
+)
 
 ResponseType = Literal[
     "ambiguous",
@@ -437,7 +441,7 @@ def _generate_response_from_provider(prompt: str) -> str:
     """Generate a response safely, including provider initialization."""
     try:
         provider = get_provider()
-    except Exception:
+    except OPERATIONAL_ERRORS + (ProviderFallbackError,):
         return ""
 
     return _generate_response(provider, prompt)
@@ -447,7 +451,7 @@ def _generate_response(provider: BaseProvider, prompt: str) -> str:
     """Generate a response safely when the provider raises an exception."""
     try:
         response = provider.generate(prompt)
-    except Exception:
+    except OPERATIONAL_ERRORS + (ProviderFallbackError,):
         return ""
 
     return _normalize_response(response)

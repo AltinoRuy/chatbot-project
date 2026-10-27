@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from agents.writer_agent import _detect_language, write_response
+from llm.providers.fallback_provider import ProviderFallbackError
 
 
 def test_write_response_returns_provider_response() -> None:
@@ -484,7 +485,7 @@ def test_write_response_uses_fallback_when_provider_raises_exception(
     expected: str,
 ) -> None:
     provider = Mock()
-    provider.generate.side_effect = RuntimeError("Provider unavailable")
+    provider.generate.side_effect = ProviderFallbackError("Provider unavailable")
 
     with patch("agents.writer_agent.get_provider", return_value=provider):
         result = write_response(message, **kwargs)
@@ -539,7 +540,7 @@ def test_write_response_uses_fallback_when_provider_initialization_fails(
 ) -> None:
     with patch(
         "agents.writer_agent.get_provider",
-        side_effect=RuntimeError("Provider unavailable"),
+        side_effect=ProviderFallbackError("Provider unavailable"),
     ):
         result = write_response(message, **kwargs)
 
@@ -666,3 +667,35 @@ def test_detect_language_identifies_short_portuguese_commands(
 ) -> None:
     """Identify short Portuguese math commands as Portuguese."""
     assert _detect_language(message) == "Portuguese"
+
+
+@pytest.mark.parametrize(
+    "unexpected_error",
+    [TypeError, AttributeError],
+)
+def test_writer_propagates_unexpected_provider_errors(
+    unexpected_error: type[Exception],
+) -> None:
+    """Propagate unexpected errors raised while generating a response."""
+    provider = Mock()
+    provider.generate.side_effect = unexpected_error("Unexpected programming error")
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        with pytest.raises(unexpected_error):
+            write_response("What is 5 + 4?", 9.0)
+
+
+@pytest.mark.parametrize(
+    "unexpected_error",
+    [TypeError, AttributeError],
+)
+def test_writer_propagates_unexpected_provider_initialization_errors(
+    unexpected_error: type[Exception],
+) -> None:
+    """Propagate unexpected errors raised while initializing the provider."""
+    with patch(
+        "agents.writer_agent.get_provider",
+        side_effect=unexpected_error("Unexpected programming error"),
+    ):
+        with pytest.raises(unexpected_error):
+            write_response("What is 5 + 4?", 9.0)

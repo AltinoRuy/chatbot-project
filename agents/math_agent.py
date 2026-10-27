@@ -13,6 +13,10 @@ from core.expression_extractor import (
 from core.intent_parser import parse_intent
 from core.tools import add, divide, multiply, subtract
 from llm.provider_factory import get_provider
+from llm.providers.fallback_provider import (
+    OPERATIONAL_ERRORS,
+    ProviderFallbackError,
+)
 from services.memory import Memory
 
 MATH_AGENT_PROMPT = """
@@ -457,7 +461,7 @@ def _interpret_with_llm(message: str) -> dict[str, Any]:
     # Provider initialization and generation failures are infrastructure errors.
     try:
         response = get_provider().generate(prompt)
-    except Exception:
+    except OPERATIONAL_ERRORS + (ProviderFallbackError,):
         return {"intent": "provider_unavailable"}
 
     # A response was received, so parsing or validation failures are different.

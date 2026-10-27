@@ -462,7 +462,7 @@ Fallback Provider
      +--> OpenAI Provider
 ```
 
-The provider factory configures the fallback order through the `CHATBOT_PROVIDERS` environment variable. By default, the order is `ollama,gemini,openai`.
+The provider factory configures the fallback order through the `CHATBOT_PROVIDERS` environment variable. By default, only the local `ollama` provider is enabled. Cloud providers such as Gemini and OpenAI must be explicitly included in `CHATBOT_PROVIDERS`.
 
 The default models configured by the application are:
 
@@ -489,7 +489,7 @@ llm/
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `CHATBOT_PROVIDERS` | Comma-separated provider order | `ollama,gemini,openai` |
+| `CHATBOT_PROVIDERS` | Comma-separated provider order | `ollama` |
 | `OLLAMA_MODEL` | Ollama model identifier | `llama3.2:3b` |
 | `GEMINI_API_KEY` | Gemini API key | Required when Gemini is used |
 | `GEMINI_MODEL` | Gemini model identifier | `gemini-3.8-flash` |
@@ -693,9 +693,9 @@ python -m pytest --cov --cov-report=term-missing -q
 Latest locally validated status:
 
 ```text
-343 passing tests
+354 passing tests
 
-94.89% code coverage
+94.96% code coverage
 
 80% minimum coverage threshold
 ```
@@ -740,7 +740,7 @@ The project enforces a minimum coverage of 80%.
 Latest locally validated coverage:
 
 ```text
-94.89%
+94.96%
 ```
 
 ## Dependency Security Note
