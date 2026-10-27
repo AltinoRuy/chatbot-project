@@ -58,6 +58,7 @@ def test_tries_next_provider_when_first_factory_times_out() -> None:
     [
         TypeError("Unexpected type"),
         AttributeError("Unexpected missing attribute"),
+        RuntimeError("Unexpected runtime failure"),
     ],
 )
 def test_propagates_programming_errors_from_factory(
@@ -84,6 +85,7 @@ def test_propagates_programming_errors_from_factory(
     [
         TypeError("Unexpected type"),
         AttributeError("Unexpected missing attribute"),
+        RuntimeError("Unexpected runtime failure"),
     ],
 )
 def test_propagates_programming_errors_from_generation(
@@ -214,3 +216,31 @@ def test_tries_next_provider_when_factory_has_configuration_error() -> None:
     ollama_factory.assert_called_once_with()
     gemini_factory.assert_called_once_with()
     gemini.generate.assert_called_once_with("Hello")
+
+
+def test_final_error_does_not_expose_provider_error_messages() -> None:
+    """Keep sensitive provider error messages out of fallback diagnostics."""
+    secret = "sk-test-secret-value"
+
+    gemini_factory = Mock(
+        side_effect=ProviderConfigurationError(f"API key missing: {secret}")
+    )
+    openai_factory = Mock(side_effect=TimeoutError(f"Request failed: {secret}"))
+
+    fallback = FallbackProvider(
+        [
+            ("Gemini", gemini_factory),
+            ("OpenAI", openai_factory),
+        ]
+    )
+
+    with pytest.raises(ProviderFallbackError) as error:
+        fallback.generate("Hello")
+
+    message = str(error.value)
+
+    assert "Gemini (ProviderConfigurationError)" in message
+    assert "OpenAI (TimeoutError)" in message
+    assert secret not in message
+    assert "API key missing" not in message
+    assert "Request failed" not in message

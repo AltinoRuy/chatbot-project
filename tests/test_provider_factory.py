@@ -236,3 +236,31 @@ def test_get_provider_falls_back_when_openai_api_key_is_missing(
     assert response == "Ollama response."
     ollama_factory.assert_called_once_with()
     ollama_factory.return_value.generate.assert_called_once_with("Hello")
+
+
+@pytest.mark.parametrize(
+    ("configuration", "expected_message"),
+    [
+        (" , ", "must contain at least one provider"),
+        ("gemini,gemini", "cannot contain duplicate providers"),
+        ("gemini,claude", "Unsupported provider"),
+    ],
+)
+def test_invalid_global_configuration_fails_before_provider_initialization(
+    monkeypatch: pytest.MonkeyPatch,
+    configuration: str,
+    expected_message: str,
+) -> None:
+    monkeypatch.setenv("CHATBOT_PROVIDERS", configuration)
+
+    with (
+        patch("llm.provider_factory._create_ollama_provider") as ollama_factory,
+        patch("llm.provider_factory._create_gemini_provider") as gemini_factory,
+        patch("llm.provider_factory._create_openai_provider") as openai_factory,
+    ):
+        with pytest.raises(ValueError, match=expected_message):
+            get_provider()
+
+    ollama_factory.assert_not_called()
+    gemini_factory.assert_not_called()
+    openai_factory.assert_not_called()
