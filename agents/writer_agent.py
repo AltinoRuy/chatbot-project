@@ -791,3 +791,52 @@ def _fallback_non_math(message: str) -> str:
         return "Puedo ayudarte con eso, pero no realizaré cálculos."
 
     return "I can help with that, but I will not perform calculations."
+
+
+def fallback_unexpected_response(message: str) -> str:
+    """Return a localized, safe response after an unexpected failure."""
+    language = _detect_language(message)
+
+    if language == "Portuguese":
+        return (
+            "Ocorreu um erro inesperado ao processar sua mensagem. " "Tente novamente."
+        )
+
+    if language == "Spanish":
+        return (
+            "Se produjo un error inesperado al procesar tu mensaje. "
+            "Int\u00e9ntalo de nuevo."
+        )
+
+    return (
+        "An unexpected error occurred while processing your message. "
+        "Please try again."
+    )
+
+
+def fallback_response(
+    message: str,
+    result: float | None = None,
+    needs_context: bool = False,
+    error: str | None = None,
+    response_type: ResponseType | None = None,
+) -> str:
+    """Return a deterministic response for a known application state."""
+    if response_type is not None:
+        return _fallback_response_type(message, response_type)
+
+    if error is not None:
+        localized_error = _localize_error(message, error)
+
+        if _is_known_error(localized_error):
+            return _fallback_error(message, localized_error)
+
+        return fallback_unexpected_response(message)
+
+    if result is not None:
+        return _fallback_result(message, _format_result(result))
+
+    if needs_context:
+        return _fallback_context(message)
+
+    return _fallback_non_math(message)

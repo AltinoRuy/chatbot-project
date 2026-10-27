@@ -48,6 +48,10 @@ Rules:
 """
 
 
+class MathDomainError(ValueError):
+    """Represent a predictable, user-correctable math error."""
+
+
 @dataclass
 class MathResult:
     """Structured result returned by the Math Agent.
@@ -94,10 +98,10 @@ def calculate(left: float, operator: str, right: float) -> float:
     elif operator == "/":
         result = divide(left, right)
     else:
-        raise ValueError(f"Unsupported operator: {operator}")
+        raise MathDomainError(f"Unsupported operator: {operator}")
 
     if not math.isfinite(result):
-        raise ValueError("Mathematical result must be finite.")
+        raise MathDomainError("Mathematical result must be finite.")
 
     return result
 
@@ -120,7 +124,7 @@ def tokenize(expression: str) -> list[str]:
 
             number = expression[start:i]
             if number.count(".") > 1 or number == ".":
-                raise ValueError("Invalid mathematical expression.")
+                raise MathDomainError("Invalid mathematical expression.")
 
             tokens.append(number)
             continue
@@ -134,11 +138,11 @@ def tokenize(expression: str) -> list[str]:
                 i += 1
 
             if start == i:
-                raise ValueError("Invalid mathematical expression.")
+                raise MathDomainError("Invalid mathematical expression.")
 
             number = expression[start:i]
             if number.count(".") > 1 or number == ".":
-                raise ValueError("Invalid mathematical expression.")
+                raise MathDomainError("Invalid mathematical expression.")
 
             tokens.append(f"-{number}")
             continue
@@ -148,7 +152,7 @@ def tokenize(expression: str) -> list[str]:
             i += 1
             continue
 
-        raise ValueError("Invalid mathematical expression.")
+        raise MathDomainError("Invalid mathematical expression.")
 
     return tokens
 
@@ -162,11 +166,11 @@ class _ExpressionParser:
 
     def parse(self) -> float:
         if not self.tokens:
-            raise ValueError("Invalid mathematical expression.")
+            raise MathDomainError("Invalid mathematical expression.")
 
         result = self._parse_expression()
         if self.position != len(self.tokens):
-            raise ValueError("Invalid mathematical expression.")
+            raise MathDomainError("Invalid mathematical expression.")
 
         return result
 
@@ -194,22 +198,22 @@ class _ExpressionParser:
         if self._match("("):
             result = self._parse_expression()
             if not self._match(")"):
-                raise ValueError("Invalid mathematical expression.")
+                raise MathDomainError("Invalid mathematical expression.")
             return result
 
         if self.position >= len(self.tokens):
-            raise ValueError("Invalid mathematical expression.")
+            raise MathDomainError("Invalid mathematical expression.")
 
         token = self.tokens[self.position]
         if token in {"+", "-", "*", "/", ")"}:
-            raise ValueError("Invalid mathematical expression.")
+            raise MathDomainError("Invalid mathematical expression.")
 
         self.position += 1
 
         try:
             return float(token)
         except ValueError as error:
-            raise ValueError("Invalid mathematical expression.") from error
+            raise MathDomainError("Invalid mathematical expression.") from error
 
     def _match(self, token: str) -> bool:
         if self.position >= len(self.tokens):
@@ -231,7 +235,7 @@ def solve(expression: str) -> float:
     """Evaluate a complete mathematical expression."""
     tokens = tokenize(expression)
     if not tokens:
-        raise ValueError("Invalid mathematical expression.")
+        raise MathDomainError("Invalid mathematical expression.")
 
     return evaluate_tokens(tokens)
 
@@ -601,7 +605,7 @@ def process_math_message(message: str, memory: Memory) -> MathResult:
         return MathResult(handled=True, result=result)
 
     if is_invalid_mathematical_expression(message):
-        raise ValueError("Invalid mathematical expression.")
+        raise MathDomainError("Invalid mathematical expression.")
 
     intent = parse_intent(message)
 
