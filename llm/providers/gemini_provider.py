@@ -5,6 +5,7 @@ import os
 from google import genai
 
 from llm.providers.base_provider import BaseProvider
+from llm.providers.errors import ProviderConfigurationError
 
 
 class GeminiProvider(BaseProvider):
@@ -22,12 +23,14 @@ class GeminiProvider(BaseProvider):
             timeout: Request timeout in seconds.
 
         Raises:
-            RuntimeError: If the Gemini API key is not configured.
+            ProviderConfigurationError: If the Gemini API key is not configured.
         """
         api_key = os.getenv("GEMINI_API_KEY")
 
         if not api_key:
-            raise RuntimeError("GEMINI_API_KEY environment variable is not configured.")
+            raise ProviderConfigurationError(
+                "GEMINI_API_KEY environment variable is not configured."
+            )
 
         self.model = model
         self.timeout = timeout

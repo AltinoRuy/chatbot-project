@@ -202,3 +202,37 @@ def test_provider_factory_uses_custom_model(
         provider_factory()
 
     mock_provider.assert_called_once_with(model="custom-test-model")
+
+
+def test_get_provider_falls_back_when_gemini_api_key_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CHATBOT_PROVIDERS", "gemini,ollama")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    with patch("llm.provider_factory._create_ollama_provider") as ollama_factory:
+        ollama_factory.return_value.generate.return_value = "Ollama response."
+
+        provider = get_provider()
+        response = provider.generate("Hello")
+
+    assert response == "Ollama response."
+    ollama_factory.assert_called_once_with()
+    ollama_factory.return_value.generate.assert_called_once_with("Hello")
+
+
+def test_get_provider_falls_back_when_openai_api_key_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CHATBOT_PROVIDERS", "openai,ollama")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    with patch("llm.provider_factory._create_ollama_provider") as ollama_factory:
+        ollama_factory.return_value.generate.return_value = "Ollama response."
+
+        provider = get_provider()
+        response = provider.generate("Hello")
+
+    assert response == "Ollama response."
+    ollama_factory.assert_called_once_with()
+    ollama_factory.return_value.generate.assert_called_once_with("Hello")

@@ -1,8 +1,11 @@
 """OpenAI language model provider."""
 
+import os
+
 from openai import OpenAI
 
 from llm.providers.base_provider import BaseProvider
+from llm.providers.errors import ProviderConfigurationError
 
 
 class OpenAIProvider(BaseProvider):
@@ -18,7 +21,17 @@ class OpenAIProvider(BaseProvider):
         Args:
             model: OpenAI model identifier.
             timeout: Request timeout in seconds.
+
+        Raises:
+            ProviderConfigurationError: If the API key is not configured.
         """
+        api_key = os.getenv("OPENAI_API_KEY")
+
+        if not api_key:
+            raise ProviderConfigurationError(
+                "OPENAI_API_KEY environment variable is not configured."
+            )
+
         self.model = model
         self.client = OpenAI(timeout=timeout)
 

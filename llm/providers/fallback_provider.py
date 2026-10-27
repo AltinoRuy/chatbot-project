@@ -9,6 +9,7 @@ from google.genai import errors as gemini_errors
 from openai import APIError
 
 from llm.providers.base_provider import BaseProvider
+from llm.providers.errors import ProviderConfigurationError
 
 ProviderFactory = Callable[[], BaseProvider]
 
@@ -68,7 +69,7 @@ class FallbackProvider(BaseProvider):
             try:
                 provider = provider_factory()
                 response = provider.generate(prompt)
-            except OPERATIONAL_ERRORS as error:
+            except OPERATIONAL_ERRORS + (ProviderConfigurationError,) as error:
                 failures.append(f"{provider_name} ({type(error).__name__})")
                 logger.warning(
                     "Provider %s failed with %s; trying the next provider.",

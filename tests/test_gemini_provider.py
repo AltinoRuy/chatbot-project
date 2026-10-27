@@ -2,6 +2,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from llm.providers.errors import ProviderConfigurationError
 from llm.providers.gemini_provider import GeminiProvider
 
 
@@ -102,7 +103,7 @@ def test_provider_requires_api_key() -> None:
         ) as mock_client_class,
     ):
         with pytest.raises(
-            RuntimeError,
+            ProviderConfigurationError,
             match="GEMINI_API_KEY environment variable is not configured",
         ):
             GeminiProvider()

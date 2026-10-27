@@ -3,6 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 from llm.providers.base_provider import BaseProvider
+from llm.providers.errors import ProviderConfigurationError
 from llm.providers.fallback_provider import (
     FallbackProvider,
     ProviderFallbackError,
@@ -188,3 +189,28 @@ def test_returns_response_without_modifying_its_content() -> None:
     result = fallback.generate("Hello")
 
     assert result == "  Original response.  "
+
+
+def test_tries_next_provider_when_factory_has_configuration_error() -> None:
+    """Try the next provider when a configured provider lacks credentials."""
+    ollama_factory = Mock(
+        side_effect=ProviderConfigurationError("Ollama credentials are missing")
+    )
+
+    gemini = Mock(spec=BaseProvider)
+    gemini.generate.return_value = "Response from Gemini."
+    gemini_factory = Mock(return_value=gemini)
+
+    fallback = FallbackProvider(
+        [
+            ("Ollama", ollama_factory),
+            ("Gemini", gemini_factory),
+        ]
+    )
+
+    result = fallback.generate("Hello")
+
+    assert result == "Response from Gemini."
+    ollama_factory.assert_called_once_with()
+    gemini_factory.assert_called_once_with()
+    gemini.generate.assert_called_once_with("Hello")
