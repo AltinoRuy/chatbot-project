@@ -468,7 +468,7 @@ The default models configured by the application are:
 
 - Ollama: `llama3.2:3b`
 - Gemini: `gemini-3.8-flash`
-- OpenAI: `gpt-5-mini`
+- OpenAI: `gpt-5.6-terra`
 
 The fallback provider tries each configured provider in order and returns the first non-empty response. If all providers fail, it raises a `ProviderFallbackError`.
 
@@ -497,7 +497,7 @@ llm/
 | `GEMINI_API_KEY` | Gemini API key | Required when Gemini is used |
 | `GEMINI_MODEL` | Gemini model identifier | `gemini-3.8-flash` |
 | `OPENAI_API_KEY` | OpenAI API key | Required when OpenAI is used |
-| `OPENAI_MODEL` | OpenAI model identifier | `gpt-5-mini` |
+| `OPENAI_MODEL` | OpenAI model identifier | `gpt-5.6-terra` |
 
 Ollama runs locally. Gemini and OpenAI require valid API credentials when they are included in the provider chain.
 
@@ -697,9 +697,9 @@ python -m pytest --cov --cov-report=term-missing -q
 Latest locally validated status:
 
 ```text
-366 passing tests
+425 passing tests
 
-94.99% code coverage
+96.93% code coverage
 
 80% minimum coverage threshold
 ```
@@ -744,7 +744,7 @@ The project enforces a minimum coverage of 80%.
 Latest locally validated coverage:
 
 ```text
-94.99%
+96.93%
 ```
 
 ## Dependency Security Note

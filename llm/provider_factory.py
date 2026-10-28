@@ -32,7 +32,7 @@ def _create_openai_provider() -> BaseProvider:
     from llm.providers.openai_provider import OpenAIProvider
 
     return OpenAIProvider(
-        model=os.getenv("OPENAI_MODEL", "gpt-5-mini"),
+        model=os.getenv("OPENAI_MODEL", "gpt-5.6-terra"),
     )
 
 

@@ -144,7 +144,7 @@ def test_get_provider_rejects_unsupported_provider(
             "llm.providers.openai_provider",
             "OpenAIProvider",
             "OPENAI_MODEL",
-            "gpt-5-mini",
+            "gpt-5.6-terra",
         ),
     ],
 )
