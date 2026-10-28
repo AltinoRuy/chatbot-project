@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from agents.writer_agent import _detect_language, write_response
+from agents.writer_agent import _detect_language, fallback_response, write_response
 from llm.providers.fallback_provider import ProviderFallbackError
 
 
@@ -699,3 +699,142 @@ def test_writer_propagates_unexpected_provider_initialization_errors(
     ):
         with pytest.raises(unexpected_error):
             write_response("What is 5 + 4?", 9.0)
+
+
+@pytest.mark.parametrize(
+    ("message", "error_type", "error", "expected"),
+    [
+        (
+            "poderia calcular 5 % 2",
+            "unsupported_operator",
+            "Unsupported mathematical operator.",
+            "O operador matem\u00e1tico solicitado n\u00e3o \u00e9 suportado.",
+        ),
+        (
+            "\u00bfPuedes calcular esta operaci\u00f3n?",
+            "unsupported_operator",
+            "Unsupported mathematical operator.",
+            "El operador matem\u00e1tico solicitado no es compatible.",
+        ),
+        (
+            "Could you calculate this operation?",
+            "unsupported_operator",
+            "Unsupported mathematical operator.",
+            "The requested mathematical operator is not supported.",
+        ),
+        (
+            "poderia calcular um valor muito grande",
+            "non_finite_result",
+            "Mathematical result must be finite.",
+            "O resultado matem\u00e1tico n\u00e3o \u00e9 um n\u00famero finito.",
+        ),
+        (
+            "\u00bfPuedes calcular un valor demasiado grande?",
+            "non_finite_result",
+            "Mathematical result must be finite.",
+            "El resultado matem\u00e1tico no es un n\u00famero finito.",
+        ),
+        (
+            "Could you calculate a huge value?",
+            "non_finite_result",
+            "Mathematical result must be finite.",
+            "The mathematical result is not a finite number.",
+        ),
+    ],
+)
+def test_writer_uses_typed_math_error_fallbacks(
+    message: str,
+    error_type: str,
+    error: str,
+    expected: str,
+) -> None:
+    """Use deterministic localized fallbacks for explicitly typed math errors."""
+    with patch("agents.writer_agent.get_provider") as mock_get_provider:
+        response = write_response(
+            message,
+            error=error,
+            error_type=error_type,
+        )
+
+    assert response == expected
+    mock_get_provider.assert_not_called()
+
+    fallback = fallback_response(
+        message,
+        error=error,
+        error_type=error_type,
+    )
+    assert fallback == expected
+
+
+@pytest.mark.parametrize("use_fallback", [False, True])
+@pytest.mark.parametrize(
+    ("message", "error", "expected"),
+    [
+        (
+            "Quanto \u00e9 10 / 0?",
+            "Cannot divide by zero",
+            "N\u00e3o \u00e9 poss\u00edvel dividir por zero.",
+        ),
+        (
+            "\u00bfPuedes reescribir esta expresi\u00f3n matem\u00e1tica?",
+            "Invalid mathematical expression.",
+            "No pude interpretar esa expresi\u00f3n matem\u00e1tica. "
+            "\u00bfPodr\u00edas reformularla?",
+        ),
+    ],
+)
+def test_legacy_math_errors_remain_deterministic(
+    use_fallback: bool,
+    message: str,
+    error: str,
+    expected: str,
+) -> None:
+    """Legacy error-only calls must retain localized deterministic fallbacks."""
+    with patch("agents.writer_agent.get_provider") as mock_get_provider:
+        if use_fallback:
+            response = fallback_response(message, error=error)
+        else:
+            response = write_response(message, error=error)
+
+    assert response == expected
+    mock_get_provider.assert_not_called()
+
+
+def test_writer_replaces_a_valid_error_placeholder() -> None:
+    """Replace a valid error placeholder with the application's error."""
+    provider = Mock()
+    provider.generate.return_value = (
+        "It was not possible to complete the operation: {{ERROR}}."
+    )
+
+    with patch("agents.writer_agent.get_provider", return_value=provider):
+        response = write_response(
+            "calculate an expression",
+            error="Invalid expression",
+        )
+
+    assert (
+        response == "It was not possible to complete the operation: Invalid expression."
+    )
+    provider.generate.assert_called_once()
+
+
+def test_legacy_generic_error_fallback_is_deterministic() -> None:
+    """Unknown legacy errors use a safe unexpected-error response."""
+    response = fallback_response(
+        "calculate an expression",
+        error="Invalid expression",
+    )
+
+    assert response == (
+        "An unexpected error occurred while processing your message. "
+        "Please try again."
+    )
+
+
+def test_fallback_response_preserves_authoritative_result() -> None:
+    """The deterministic fallback must use the supplied result unchanged."""
+    response = fallback_response("What is 5 + 4?", result=9.0)
+
+    assert response == "The result is 9."

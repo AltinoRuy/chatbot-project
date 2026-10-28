@@ -14,6 +14,49 @@ ResponseType = Literal[
     "provider_unavailable",
 ]
 
+MathErrorType = Literal[
+    "division_by_zero",
+    "invalid_expression",
+    "unsupported_operator",
+    "non_finite_result",
+]
+
+_MATH_ERROR_FALLBACKS = {
+    "division_by_zero": {
+        "Portuguese": "N\u00e3o \u00e9 poss\u00edvel dividir por zero.",
+        "Spanish": "No es posible dividir por cero.",
+        "English": "It is not possible to divide by zero.",
+    },
+    "invalid_expression": {
+        "Portuguese": (
+            "N\u00e3o consegui interpretar essa express\u00e3o matem\u00e1tica. "
+            "Pode reformul\u00e1-la?"
+        ),
+        "Spanish": (
+            "No pude interpretar esa expresi\u00f3n matem\u00e1tica. "
+            "\u00bfPodr\u00edas reformularla?"
+        ),
+        "English": (
+            "I couldn't interpret that mathematical expression. "
+            "Could you rephrase it?"
+        ),
+    },
+    "unsupported_operator": {
+        "Portuguese": (
+            "O operador matem\u00e1tico solicitado " "n\u00e3o \u00e9 suportado."
+        ),
+        "Spanish": ("El operador matem\u00e1tico solicitado no es compatible."),
+        "English": "The requested mathematical operator is not supported.",
+    },
+    "non_finite_result": {
+        "Portuguese": (
+            "O resultado matem\u00e1tico n\u00e3o \u00e9 um n\u00famero finito."
+        ),
+        "Spanish": ("El resultado matem\u00e1tico no es un n\u00famero finito."),
+        "English": "The mathematical result is not a finite number.",
+    },
+}
+
 PORTUGUESE_MARKERS = {
     "ajuda",
     "bom",
@@ -295,6 +338,7 @@ def write_response(
     needs_context: bool = False,
     error: str | None = None,
     response_type: ResponseType | None = None,
+    error_type: MathErrorType | None = None,
 ) -> str:
     """Generate a response while preserving authoritative application data.
 
@@ -352,6 +396,9 @@ def write_response(
         return response
 
     if error is not None:
+        if error_type is not None:
+            return _fallback_error(message, error, error_type)
+
         localized_error = _localize_error(message, error)
 
         if _is_known_error(localized_error):
@@ -531,11 +578,6 @@ def _detect_language(message: str) -> str:
     return "English"
 
 
-def _is_portuguese(message: str) -> bool:
-    """Return whether the message is classified as Portuguese."""
-    return _detect_language(message) == "Portuguese"
-
-
 def _contains_numbers(response: str) -> bool:
     """Return whether text contains digits or contextual numeric words."""
     return bool(re.search(r"\d", response) or _number_word_matches(response))
@@ -700,13 +742,22 @@ def _fallback_context(message: str) -> str:
     return "There is no previous mathematical result to use."
 
 
-def _fallback_error(message: str, error: str) -> str:
+def _fallback_error(
+    message: str,
+    error: str,
+    error_type: MathErrorType | None = None,
+) -> str:
     """Return a deterministic, localized response for a mathematical error."""
     language = _detect_language(message)
 
+    if error_type is not None:
+        if error_type in _MATH_ERROR_FALLBACKS:
+            return _MATH_ERROR_FALLBACKS[error_type][language]
+        return fallback_unexpected_response(message)
+
     if _is_division_by_zero_error(error):
         if language == "Portuguese":
-            return "Não é possível dividir por zero."
+            return "N\u00e3o \u00e9 poss\u00edvel dividir por zero."
 
         if language == "Spanish":
             return "No es posible dividir por cero."
@@ -716,14 +767,14 @@ def _fallback_error(message: str, error: str) -> str:
     if _is_invalid_expression_error(error):
         if language == "Portuguese":
             return (
-                "Não consegui interpretar essa expressão matemática. "
-                "Pode reformulá-la?"
+                "N\u00e3o consegui interpretar essa express\u00e3o matem\u00e1tica. "
+                "Pode reformul\u00e1-la?"
             )
 
         if language == "Spanish":
             return (
-                "No pude interpretar esa expresión matemática. "
-                "¿Podrías reformularla?"
+                "No pude interpretar esa expresi\u00f3n matem\u00e1tica. "
+                "\u00bfPodr\u00edas reformularla?"
             )
 
         return (
@@ -732,10 +783,10 @@ def _fallback_error(message: str, error: str) -> str:
         )
 
     if language == "Portuguese":
-        return f"Não foi possível concluir a operação: {error}."
+        return f"N\u00e3o foi poss\u00edvel concluir a opera\u00e7\u00e3o: {error}."
 
     if language == "Spanish":
-        return f"No fue posible completar la operación: {error}."
+        return f"No fue posible completar la operaci\u00f3n: {error}."
 
     return f"It was not possible to complete the operation: {error}."
 
@@ -820,12 +871,16 @@ def fallback_response(
     needs_context: bool = False,
     error: str | None = None,
     response_type: ResponseType | None = None,
+    error_type: MathErrorType | None = None,
 ) -> str:
     """Return a deterministic response for a known application state."""
     if response_type is not None:
         return _fallback_response_type(message, response_type)
 
     if error is not None:
+        if error_type is not None:
+            return _fallback_error(message, error, error_type)
+
         localized_error = _localize_error(message, error)
 
         if _is_known_error(localized_error):

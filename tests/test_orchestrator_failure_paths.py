@@ -5,7 +5,13 @@ from unittest.mock import patch
 
 import pytest
 
-from agents.math_agent import MathDomainError, MathResult
+from agents.math_agent import (
+    InvalidMathematicalExpressionError,
+    MathDomainError,
+    MathResult,
+    NonFiniteMathResultError,
+    UnsupportedMathOperatorError,
+)
 from core.tools import DivisionByZeroError
 from services.memory import Memory
 from services.orchestrator import process_message
@@ -197,6 +203,36 @@ def _math_result_for(scenario: str) -> MathResult:
             "I couldn't interpret that mathematical expression. "
             "Could you rephrase it?",
         ),
+        (
+            "unsupported_operator",
+            "Poderia calcular a opera\u00e7\u00e3o 5 % 2?",
+            "O operador matem\u00e1tico solicitado n\u00e3o \u00e9 suportado.",
+        ),
+        (
+            "unsupported_operator",
+            "\u00bfPuedes calcular esta operaci\u00f3n?",
+            "El operador matem\u00e1tico solicitado no es compatible.",
+        ),
+        (
+            "unsupported_operator",
+            "Please calculate this operation.",
+            "The requested mathematical operator is not supported.",
+        ),
+        (
+            "non_finite_result",
+            "Poderia calcular um valor muito grande?",
+            "O resultado matem\u00e1tico n\u00e3o \u00e9 um n\u00famero finito.",
+        ),
+        (
+            "non_finite_result",
+            "\u00bfPuedes calcular un valor demasiado grande?",
+            "El resultado matem\u00e1tico no es un n\u00famero finito.",
+        ),
+        (
+            "non_finite_result",
+            "Could you calculate a huge value?",
+            "The mathematical result is not a finite number.",
+        ),
     ],
 )
 def test_writer_failure_uses_state_specific_localized_fallback(
@@ -218,7 +254,19 @@ def test_writer_failure_uses_state_specific_localized_fallback(
     elif scenario == "invalid_expression":
         math_patch = patch(
             "services.orchestrator.process_math_message",
-            side_effect=MathDomainError("Invalid mathematical expression."),
+            side_effect=InvalidMathematicalExpressionError(
+                "Invalid mathematical expression."
+            ),
+        )
+    elif scenario == "unsupported_operator":
+        math_patch = patch(
+            "services.orchestrator.process_math_message",
+            side_effect=UnsupportedMathOperatorError("Unsupported operator: %"),
+        )
+    elif scenario == "non_finite_result":
+        math_patch = patch(
+            "services.orchestrator.process_math_message",
+            side_effect=NonFiniteMathResultError("Mathematical result must be finite."),
         )
     else:
         math_patch = patch(
@@ -414,10 +462,20 @@ def test_non_result_fallback_failure_is_safe_and_localized(
     assert "Writer fallback failed" in caplog.text
 
 
+@pytest.mark.parametrize(
+    ("message", "language"),
+    [
+        ("Ol\u00e1, tudo bem?", "Portuguese"),
+        ("\u00bfPuedes ayudarme?", "Spanish"),
+        ("Hello, how are you?", "English"),
+    ],
+)
 def test_last_resort_response_survives_localized_fallback_failure(
+    message: str,
+    language: str,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Return a safe last-resort message if the localized fallback also fails."""
+    """Return a safe localized message if the main fallback also fails."""
     memory = Memory()
     math_secret = "math_exception_DO_NOT_LOG"
     fallback_secret = "fallback_exception_DO_NOT_LOG"
@@ -433,9 +491,9 @@ def test_last_resort_response_survives_localized_fallback_failure(
         ),
         caplog.at_level(logging.ERROR, logger="services.orchestrator"),
     ):
-        response = process_message("Hello, how are you?", memory)
+        response = process_message(message, memory)
 
-    assert response == GENERIC_ERROR_RESPONSES["English"]
+    assert response == GENERIC_ERROR_RESPONSES[language]
     assert math_secret not in response
     assert fallback_secret not in response
     assert math_secret not in caplog.text

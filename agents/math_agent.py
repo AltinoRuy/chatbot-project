@@ -49,7 +49,19 @@ Rules:
 
 
 class MathDomainError(ValueError):
-    """Represent a predictable, user-correctable math error."""
+    """Base class for predictable, user-correctable math errors."""
+
+
+class InvalidMathematicalExpressionError(MathDomainError):
+    """Raised when a mathematical expression is invalid."""
+
+
+class UnsupportedMathOperatorError(MathDomainError):
+    """Raised when a mathematical operator is unsupported."""
+
+
+class NonFiniteMathResultError(MathDomainError):
+    """Raised when a calculation produces a non-finite result."""
 
 
 @dataclass
@@ -86,7 +98,7 @@ def calculate(left: float, operator: str, right: float) -> float:
         The finite result of the requested operation.
 
     Raises:
-        ValueError: If the operator is unsupported or the result is not finite.
+        MathDomainError: If the operator is unsupported or the result is not finite.
         DivisionByZeroError: If division by zero is attempted.
     """
     if operator == "+":
@@ -98,10 +110,10 @@ def calculate(left: float, operator: str, right: float) -> float:
     elif operator == "/":
         result = divide(left, right)
     else:
-        raise MathDomainError(f"Unsupported operator: {operator}")
+        raise UnsupportedMathOperatorError(f"Unsupported operator: {operator}")
 
     if not math.isfinite(result):
-        raise MathDomainError("Mathematical result must be finite.")
+        raise NonFiniteMathResultError("Mathematical result must be finite.")
 
     return result
 
@@ -124,7 +136,9 @@ def tokenize(expression: str) -> list[str]:
 
             number = expression[start:i]
             if number.count(".") > 1 or number == ".":
-                raise MathDomainError("Invalid mathematical expression.")
+                raise InvalidMathematicalExpressionError(
+                    "Invalid mathematical expression."
+                )
 
             tokens.append(number)
             continue
@@ -138,11 +152,15 @@ def tokenize(expression: str) -> list[str]:
                 i += 1
 
             if start == i:
-                raise MathDomainError("Invalid mathematical expression.")
+                raise InvalidMathematicalExpressionError(
+                    "Invalid mathematical expression."
+                )
 
             number = expression[start:i]
             if number.count(".") > 1 or number == ".":
-                raise MathDomainError("Invalid mathematical expression.")
+                raise InvalidMathematicalExpressionError(
+                    "Invalid mathematical expression."
+                )
 
             tokens.append(f"-{number}")
             continue
@@ -152,7 +170,7 @@ def tokenize(expression: str) -> list[str]:
             i += 1
             continue
 
-        raise MathDomainError("Invalid mathematical expression.")
+        raise InvalidMathematicalExpressionError("Invalid mathematical expression.")
 
     return tokens
 
@@ -166,11 +184,11 @@ class _ExpressionParser:
 
     def parse(self) -> float:
         if not self.tokens:
-            raise MathDomainError("Invalid mathematical expression.")
+            raise InvalidMathematicalExpressionError("Invalid mathematical expression.")
 
         result = self._parse_expression()
         if self.position != len(self.tokens):
-            raise MathDomainError("Invalid mathematical expression.")
+            raise InvalidMathematicalExpressionError("Invalid mathematical expression.")
 
         return result
 
@@ -198,22 +216,26 @@ class _ExpressionParser:
         if self._match("("):
             result = self._parse_expression()
             if not self._match(")"):
-                raise MathDomainError("Invalid mathematical expression.")
+                raise InvalidMathematicalExpressionError(
+                    "Invalid mathematical expression."
+                )
             return result
 
         if self.position >= len(self.tokens):
-            raise MathDomainError("Invalid mathematical expression.")
+            raise InvalidMathematicalExpressionError("Invalid mathematical expression.")
 
         token = self.tokens[self.position]
         if token in {"+", "-", "*", "/", ")"}:
-            raise MathDomainError("Invalid mathematical expression.")
+            raise InvalidMathematicalExpressionError("Invalid mathematical expression.")
 
         self.position += 1
 
         try:
             return float(token)
         except ValueError as error:
-            raise MathDomainError("Invalid mathematical expression.") from error
+            raise InvalidMathematicalExpressionError(
+                "Invalid mathematical expression."
+            ) from error
 
     def _match(self, token: str) -> bool:
         if self.position >= len(self.tokens):
@@ -235,7 +257,7 @@ def solve(expression: str) -> float:
     """Evaluate a complete mathematical expression."""
     tokens = tokenize(expression)
     if not tokens:
-        raise MathDomainError("Invalid mathematical expression.")
+        raise InvalidMathematicalExpressionError("Invalid mathematical expression.")
 
     return evaluate_tokens(tokens)
 
@@ -605,7 +627,7 @@ def process_math_message(message: str, memory: Memory) -> MathResult:
         return MathResult(handled=True, result=result)
 
     if is_invalid_mathematical_expression(message):
-        raise MathDomainError("Invalid mathematical expression.")
+        raise InvalidMathematicalExpressionError("Invalid mathematical expression.")
 
     intent = parse_intent(message)
 

@@ -1,6 +1,9 @@
 from unittest.mock import Mock, patch
 
-from agents.math_agent import MathDomainError, MathResult
+from agents.math_agent import (
+    InvalidMathematicalExpressionError,
+    MathResult,
+)
 from core.tools import DivisionByZeroError
 from llm.providers.fallback_provider import ProviderFallbackError
 from services.memory import Memory
@@ -132,6 +135,7 @@ def test_process_message_with_division_by_zero_error() -> None:
     mock_write_response.assert_called_once_with(
         "10 / 0",
         error="Cannot divide by zero",
+        error_type="division_by_zero",
     )
 
 
@@ -143,7 +147,7 @@ def test_process_message_with_math_error() -> None:
     with (
         patch(
             "services.orchestrator.process_math_message",
-            side_effect=MathDomainError(error_message),
+            side_effect=InvalidMathematicalExpressionError(error_message),
         ) as mock_process_math,
         patch(
             "services.orchestrator.write_response",
@@ -157,6 +161,7 @@ def test_process_message_with_math_error() -> None:
     mock_write_response.assert_called_once_with(
         "5++",
         error=error_message,
+        error_type="invalid_expression",
     )
 
 
@@ -232,7 +237,7 @@ def test_process_message_with_invalid_word_expression() -> None:
     with (
         patch(
             "services.orchestrator.process_math_message",
-            side_effect=MathDomainError(error_message),
+            side_effect=InvalidMathematicalExpressionError(error_message),
         ) as mock_process_math,
         patch(
             "services.orchestrator.write_response",
@@ -249,6 +254,7 @@ def test_process_message_with_invalid_word_expression() -> None:
     mock_write_response.assert_called_once_with(
         "banana+banana",
         error=error_message,
+        error_type="invalid_expression",
     )
 
 

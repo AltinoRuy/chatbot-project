@@ -4,7 +4,10 @@ from unittest.mock import Mock, patch
 import pytest
 
 from agents.math_agent import (
+    InvalidMathematicalExpressionError,
     MathResult,
+    NonFiniteMathResultError,
+    UnsupportedMathOperatorError,
     _contextual_operation_is_grounded,
     _expression_is_grounded,
     _ExpressionParser,
@@ -42,7 +45,10 @@ def test_calculate_supported_operations(
 
 
 def test_calculate_rejects_unsupported_operator() -> None:
-    with pytest.raises(ValueError, match="Unsupported operator"):
+    with pytest.raises(
+        UnsupportedMathOperatorError,
+        match="Unsupported operator",
+    ):
         calculate(5, "%", 2)
 
 
@@ -67,7 +73,7 @@ def test_calculate_rejects_non_finite_results(
     right: float,
 ) -> None:
     with pytest.raises(
-        ValueError,
+        NonFiniteMathResultError,
         match="Mathematical result must be finite",
     ):
         calculate(left, operator, right)
@@ -106,7 +112,7 @@ def test_solve_supported_expressions(
     ],
 )
 def test_solve_rejects_invalid_expressions(expression: str) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidMathematicalExpressionError):
         solve(expression)
 
 
@@ -114,7 +120,7 @@ def test_solve_rejects_overflowing_expression() -> None:
     expression = f"{'9' * 400}+1"
 
     with pytest.raises(
-        ValueError,
+        NonFiniteMathResultError,
         match="Mathematical result must be finite",
     ):
         solve(expression)
