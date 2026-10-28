@@ -2,6 +2,11 @@
 
 A local AI chatbot built with Python, Streamlit, and Ollama. The project demonstrates agent orchestration, tool usage, context management, memory, prompt engineering, guardrails, and LLM provider abstraction without relying on agent frameworks such as LangChain or CrewAI.
 
+## Demo
+
+Here is the chatbot running with contextual mathematical memory.
+
+![AI Chatbot demo](assets/chatbot-demo.png)
 ## Overview
 
 The chatbot processes user messages through a lightweight agent architecture composed of an Orchestrator, a Math Agent, and a Writer Agent.
