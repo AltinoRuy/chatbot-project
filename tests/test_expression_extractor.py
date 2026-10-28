@@ -1,0 +1,175 @@
+﻿from core.expression_extractor import (
+    extract_expression,
+    is_context_operation,
+    is_invalid_mathematical_expression,
+    normalize_expression,
+)
+
+
+def test_extract_simple_expression() -> None:
+    assert extract_expression("5+4") == "5+4"
+
+
+def test_extract_expression_with_spaces() -> None:
+    assert extract_expression("5 + 4") == "5+4"
+
+
+def test_extract_decimal_expression() -> None:
+    assert extract_expression("5.5 * 2") == "5.5*2"
+
+
+def test_extract_decimal_expression_with_comma() -> None:
+    assert extract_expression("0,5 + 1,5") == "0.5+1.5"
+
+
+def test_extract_decimal_expression_with_spaces_around_comma() -> None:
+    assert extract_expression("0, 5 + 1, 5") == "0.5+1.5"
+
+
+def test_extract_negative_expression() -> None:
+    assert extract_expression("-5 + 2") == "-5+2"
+
+
+def test_extract_number_words_portuguese() -> None:
+    assert extract_expression("cinco mais quatro") == "5+4"
+
+
+def test_extract_accented_number_words_portuguese() -> None:
+    assert extract_expression("três mais dois") == "3+2"
+
+
+def test_extract_number_words_english() -> None:
+    assert extract_expression("five plus four") == "5+4"
+
+
+def test_extract_number_words_spanish() -> None:
+    assert extract_expression("cinco más cuatro") == "5+4"
+
+
+def test_extract_spanish_two_with_accented_plus() -> None:
+    assert extract_expression("dos más cuatro") == "2+4"
+
+
+def test_extract_spanish_seven_with_accented_plus() -> None:
+    assert extract_expression("siete más dos") == "7+2"
+
+
+def test_extract_spanish_seven_with_plus_without_accent() -> None:
+    assert extract_expression("siete mas dos") == "7+2"
+
+
+def test_normalize_accented_operator_words() -> None:
+    assert normalize_expression("cinco más cuatro") == "5+4"
+
+
+def test_extract_expression_inside_portuguese_sentence() -> None:
+    assert extract_expression("Quanto é 5 + 4?") == "5+4"
+
+
+def test_extract_expression_inside_english_sentence() -> None:
+    assert extract_expression("How much is 5 + 4?") == "5+4"
+
+
+def test_extract_expression_inside_spanish_sentence() -> None:
+    assert extract_expression("¿Cuánto es 5 + 4?") == "5+4"
+
+
+def test_extract_expression_with_large_number_word() -> None:
+    assert extract_expression("vinte mais 7 menos três") == "20+7-3"
+
+
+def test_extract_expression_with_noise_and_emojis() -> None:
+    assert (
+        extract_expression(
+            "😂😂🔥 quanto é isso aqui mano: vinte mais 7 menos três kkkkk"
+        )
+        == "20+7-3"
+    )
+
+
+def test_extract_parenthesized_expression() -> None:
+    assert extract_expression("((18 + 6) / 3) * 4 - 5") == "((18+6)/3)*4-5"
+
+
+def test_returns_none_for_non_math_text() -> None:
+    assert extract_expression("I have 5 apples and 4 bananas") is None
+
+
+def test_detect_context_operation() -> None:
+    assert is_context_operation("+5") is True
+
+
+def test_detect_context_division() -> None:
+    assert is_context_operation("/2") is True
+
+
+def test_context_operation_rejects_complete_expression() -> None:
+    assert is_context_operation("5+4") is False
+
+
+def test_detect_invalid_expression() -> None:
+    assert is_invalid_mathematical_expression("5+") is True
+
+
+def test_detect_invalid_operator_sequence() -> None:
+    assert is_invalid_mathematical_expression("2//3") is True
+
+
+def test_detect_invalid_expression_with_words() -> None:
+    assert is_invalid_mathematical_expression("banana+banana") is True
+
+
+def test_detect_invalid_multiplication_with_words() -> None:
+    assert is_invalid_mathematical_expression("banana*banana") is True
+
+
+def test_detect_invalid_division_with_words() -> None:
+    assert is_invalid_mathematical_expression("banana/banana") is True
+
+
+def test_detect_invalid_subtraction_with_words() -> None:
+    assert is_invalid_mathematical_expression("banana-banana") is True
+
+
+def test_ignore_non_math_sentence() -> None:
+    assert is_invalid_mathematical_expression("hello world") is False
+
+
+def test_ignore_sentence_with_numbers_without_operator() -> None:
+    assert is_invalid_mathematical_expression("I have 5 apples and 4 bananas") is False
+
+
+def test_ignore_plain_word() -> None:
+    assert is_invalid_mathematical_expression("banana") is False
+
+
+def test_context_operation_with_prefix() -> None:
+    assert is_context_operation("agora subtraia por 2") is True
+
+
+def test_context_operation_with_prefix_is_not_invalid() -> None:
+    assert is_invalid_mathematical_expression("agora subtraia por 2") is False
+
+
+def test_extract_spanish_one_plus_two() -> None:
+    assert extract_expression("uno más dos") == "1+2"
+
+
+def test_extract_spanish_eight_plus_two() -> None:
+    assert extract_expression("ocho más dos") == "8+2"
+
+
+def test_extract_spanish_nine_plus_one() -> None:
+    assert extract_expression("nueve más uno") == "9+1"
+
+
+def test_normalize_spanish_contextual_division() -> None:
+    assert normalize_expression("dividir por ocho") == "/8"
+
+
+def test_detect_spanish_contextual_division() -> None:
+    assert is_context_operation("dividir por ocho") is True
+
+
+def test_spanish_contextual_division_is_not_invalid() -> None:
+    assert is_invalid_mathematical_expression("dividir por ocho") is False
